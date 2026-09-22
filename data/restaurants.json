@@ -1,0 +1,10 @@
+[
+  { "id": 1, "name": "Zakura", "rating": 5, "cuisine": "Japanese", "deliveryTime": 20},
+  { "id": 2, "name": "Marani", "rating": 5, "cuisine": "Georgian", "deliveryTime": 45},
+  { "id": 3, "name": "FilletHouse", "rating": 4, "cuisine": "American", "deliveryTime": 30},
+  { "id": 4, "name": "Xing Yun", "rating": 3, "cuisine": "Chinese", "deliveryTime": 45},
+  { "id": 5, "name": "BurgerBay", "rating": 3, "cuisine": "American", "deliveryTime": 20},
+  { "id": 6, "name": "Jasmine", "rating": 4, "cuisine": "Japanese", "deliveryTime": 45},
+  { "id": 7, "name": "Paul", "rating": 3, "cuisine": "French", "deliveryTime": 20},
+  { "id": 8, "name": "L'avenue", "rating": 5, "cuisine": "French", "deliveryTime": 30}
+]
