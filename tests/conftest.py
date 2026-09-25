@@ -1,10 +1,8 @@
-import json
-
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, get_repository
-from app.repository import RestaurantRepository
+import services.restaurant_services as restaurant_services
+from app.main import app
 
 SAMPLE_RESTAURANTS = [
     {"id": 101, "name": "Test Bistro", "rating": 4, "cuisine": "Test", "deliveryTime": 25},
@@ -18,15 +16,8 @@ def sample_restaurants():
 
 
 @pytest.fixture
-def temp_data_file(tmp_path, sample_restaurants):
-    data_file = tmp_path / "restaurants.json"
-    data_file.write_text(json.dumps(sample_restaurants))
-    return data_file
-
-
-@pytest.fixture
-def client(temp_data_file):
-    app.dependency_overrides[get_repository] = lambda: RestaurantRepository(temp_data_file)
+def client(monkeypatch, sample_restaurants):
+    #TestClient wired to isolated sample data instead of the committed dataset.
+    monkeypatch.setattr(restaurant_services, "read_json_file", lambda: sample_restaurants)
     with TestClient(app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()

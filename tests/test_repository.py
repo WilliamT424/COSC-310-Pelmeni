@@ -1,8 +1,11 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 
-from app.repository import RestaurantRepository
+from repositories.restaurant_repositories import read_json_file
+from services.restaurant_services import list_restaurants
+import services.restaurant_services as restaurant_services
 
 SAMPLE = [
     {"id": 1, "name": "Alpha", "rating": 5, "cuisine": "A", "deliveryTime": 10},
@@ -17,31 +20,28 @@ def data_file(tmp_path):
     return path
 
 
-def test_get_all_returns_every_restaurant(data_file):
-    repo = RestaurantRepository(data_file)
-    assert len(repo.get_all()) == len(SAMPLE)
+def test_read_json_file_returns_every_restaurant(data_file):
+    data = read_json_file(data_file)
+    assert len(data) == len(SAMPLE)
 
 
-def test_get_all_preserves_restaurant_fields(data_file):
-    repo = RestaurantRepository(data_file)
-    alpha = next(r for r in repo.get_all() if r["id"] == 1)
+def test_read_json_file_preserves_restaurant_fields(data_file):
+    data = read_json_file(data_file)
+    alpha = next(r for r in data if r["id"] == 1)
     assert alpha["name"] == "Alpha"
     assert alpha["cuisine"] == "A"
 
 
-def test_get_by_id_returns_matching_restaurant(data_file):
-    repo = RestaurantRepository(data_file)
-    assert repo.get_by_id(2)["name"] == "Beta"
-
-
-def test_get_by_id_returns_none_for_unknown_id(data_file):
-    repo = RestaurantRepository(data_file)
-    assert repo.get_by_id(9999) is None
-
-
-def test_loading_missing_file_raises_file_not_found(tmp_path):
+def test_read_json_file_missing_file_raises_file_not_found(tmp_path):
     missing_path = tmp_path / "does_not_exist.json"
-    repo = RestaurantRepository(missing_path)
 
     with pytest.raises(FileNotFoundError):
-        repo.get_all()
+        read_json_file(missing_path)
+
+
+def test_list_restaurants_rejects_invalid_restaurant_data(monkeypatch):
+    invalid_data = [{"id": 1, "name": "Missing Fields"}]
+    monkeypatch.setattr(restaurant_services, "read_json_file", lambda: invalid_data)
+
+    with pytest.raises(ValidationError):
+        list_restaurants()
