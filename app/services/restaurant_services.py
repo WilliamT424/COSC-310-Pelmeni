@@ -1,6 +1,6 @@
 import json 
-from repositories.restaurant_repositories import read_json_file
-from schemas.restaurant import Restaurant
+from app.repositories.restaurant_repositories import read_json_file
+from app.schemas.restaurant import Restaurant
 
 
 def list_restaurants():
