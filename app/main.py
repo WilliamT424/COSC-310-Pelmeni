@@ -1,6 +1,6 @@
 import json  
 from fastapi import FastAPI, status
-from services.restaurant_services import list_restaurants
+from app.services.restaurant_services import list_restaurants
 
 app = FastAPI()
 
