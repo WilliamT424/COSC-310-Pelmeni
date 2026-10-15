@@ -7,3 +7,9 @@ class Restaurant(BaseModel):
     rating: int
     cuisine: str
     deliveryTime: int
+
+class RestaurantUpdate(BaseModel):
+    name: str | None = None
+    rating: float | None = None
+    cuisine: str | None = None
+    deliveryTime: int | None = None

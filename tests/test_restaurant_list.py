@@ -23,10 +23,9 @@ def test_list_restaurants_preserves_restaurant_fields(client, sample_restaurants
     assert match["cuisine"] == target["cuisine"]
 
 
-#Verifies that clients cannot use an unsupported HTTP method on this endpoint
-def test_list_restaurants_rejects_unsupported_method(client):
+def test_create_restaurant_missing_body(client):
     response = client.post("/restaurants")
-    assert response.status_code == 405
+    assert response.status_code == 422
 
 
 #Verifies that the restaurant details endpoint works for an existing restaurant
