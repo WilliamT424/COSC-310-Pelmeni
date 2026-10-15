@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+from app.schemas.restaurant import Restaurant
+import app.repositories.restaurant_repositories as restaurant_repositories
 
 current_dir = Path(__file__).resolve().parent.parent.parent
 
@@ -15,7 +17,7 @@ def update_json(data):
 
 def update_restaurant(restaurant_id, updated_data):
     restaurants = read_json_file()
-
+ 
     for restaurant in restaurants:
         if restaurant["id"] == restaurant_id:
             restaurant.update(updated_data)
