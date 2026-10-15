@@ -10,3 +10,11 @@ def list_restaurants():
         restaurant_obj = Restaurant(**restaurant)
         print(restaurant_obj)
     return data
+
+def get_restaurant(restaurant_id: int):
+
+    data = read_json_file()
+    for restaurant in data:
+        if restaurant["id"] == restaurant_id:
+            return restaurant
+    return None
