@@ -17,10 +17,12 @@ SAMPLE = [
 
 @pytest.fixture
 def data_file(tmp_path):
-    path = tmp_path / "restaurants.json"
+    data_folder = tmp_path / "data"
+    data_folder.mkdir()
+
+    path = data_folder / "restaurants.json"
     path.write_text(json.dumps(SAMPLE))
     return path
-
 
 def test_read_json_file_returns_every_restaurant(data_file):
     data = read_json_file(data_file)
@@ -49,9 +51,10 @@ def test_list_restaurants_rejects_invalid_restaurant_data(monkeypatch):
         list_restaurants()
 
 
-def test_update_json(data_file):
+def test_update_json(data_file, monkeypatch):
+    monkeypatch.setattr(restaurant_repositories, "current_dir", data_file.parent.parent)
     new_data = [{"id": 3, "name": "Gamma"}]
-    restaurant_repositories.update_json(new_data, data_file)
+    restaurant_repositories.update_json(new_data)
     result = restaurant_repositories.read_json_file(data_file)
 
     assert result == new_data
