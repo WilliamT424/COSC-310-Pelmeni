@@ -1,30 +1,31 @@
 import json 
 from app.repositories.menu_items_repositories import write_json_file_by_restaurant, read_menu_json_file
 from app.repositories.restaurant_repositories import read_json_file
-from app.schemas.menu_item import MenuItem
+from app.schemas.menu import menuItem
+from app.repositories.menu_repositories import read_menus_file
 
-def create_menu_item(restaurant_id, item_name, item_price, item_inventory):
+def create_menu_item(restaurant_id, menu_id, item_name, item_price, available, description):
     
-    data = read_menu_json_file(restaurant_id)
+    data = read_menu_json_file(menu_id)
 
-    new_item = MenuItem(
+    new_item = menuItem(
         id = len(data) + 1,
         name = item_name,
         price = item_price,
-        inventory = item_inventory,
-        restaurant_id = restaurant_id,
-        restaurant_name = read_json_file(restaurant_id).get("name")
+        available = available,
+        description = description
     )
 
     return new_item
 
-def add_to_menu(restaurant_id, menu_item: MenuItem):
+def add_to_menu(restaurant_id, menu_item: menuItem):
 
     new_item = {
         "id": menu_item.id,
         "name": menu_item.name,
         "price": menu_item.price,
-        "inventory": menu_item.inventory,
+        "available": menu_item.available,
+        "description": menu_item.description,
         "restaurant_id": menu_item.restaurant_id,
         "restaurant_name": menu_item.restaurant_name,
     }
@@ -37,13 +38,13 @@ def update_menu_item(restaurant_id, updates: dict):
         "id": updates.get("id"),
         "name": updates.get("name"),
         "price": updates.get("price"),
-        "inventory": updates.get("inventory"),
+        "available": updates.get("available"),
+        "description": updates.get("description"),
         "restaurant_id": updates.get("restaurant_id"),
         "restaurant_name": updates.get("restaurant_name"),
     }
 
     write_json_file_by_restaurant(restaurant_id, updated_item)    
-from app.repositories.menu_repositories import read_menus_file
 
 
 def list_menus_for_restaurant(restaurant_id: int) -> list[dict]:

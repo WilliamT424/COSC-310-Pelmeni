@@ -13,7 +13,6 @@ def read_menu_json_file(restaurant_id, file_path = current_dir / "data" / "menu_
 
 
 def write_json_file_by_restaurant(restaurant_id, item_data, file_path = current_dir / "data" / "menu_items.json"):
-
     with open(file_path, "r") as file:
         data = json.load(file)
         prev_data = [item for item in data if item["restaurant_id"] == restaurant_id and item["id"] == item_data["id"]]
