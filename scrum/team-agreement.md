@@ -1,4 +1,4 @@
-# Team Assignment: Team Details & Team Agreement
+# Team Agreement V2
 Team Name: Pelmeni
 Team Members: Nicki Gadirova (70383583), Begaiym Aitbaeva (28802825), William Tang (99807679), Gurnoor Chawla (76081637)
 Lab Section: L02
@@ -8,8 +8,8 @@ Fairness, equity, respect, responsibility, trust and communication
 # Meetings
 - How often will you meet?
 We’re going to meet in person once a week and do online meetings if necessary
-W- hen and where will you meet?
-On campus on 
+- When and where will you meet?
+We will meet on campus at a time and location agreed upon by all team members. If an in-person meeting is not possible, we will arrange an online meeting.
 - What happens if someone cannot attend?
 They can join the conversation online. If they’re not able to join online, we’re going to summarize the outcomes of our meeting and explain the tasks to them.
 # Communication
@@ -21,11 +21,11 @@ Instagram, Discord
 Instagram, Discord
 # Response Expectations
 - How quickly should team members respond to messages?
-1 hour at most
+Team members should respond to messages within 24 hours on regular days. If something is urgent, members should respond as soon as possible. If someone is unavailable, they should notify the team when possible.
 - What should someone do if they cannot respond?
-Tell us in advance 
+They should tell us in advance
 - What happens if a member repeatedly fails to respond?
-We are going to assign extra work to them
+The team will first contact them privately to understand the reason and if there are any difficulties they may be facing, and we will agree on reasonable expectations for future communication and check if the situation improves. However, if the problem continues, we will discuss it together and, if necessary, talk to the TA or professor about it.
 # Respect & Professional Conduct
 - What does respectful behavior mean to your team?
 Not being rude, completing your tasks on time, responding to messages and calls, showing up to the meetings, and being involved
@@ -43,9 +43,7 @@ Firstly, we will brainstorm and share the ideas with each other and write them d
 # Conflict Resolution
 - How will your team handle disagreements?
 Describe the steps you will take to resolve conflicts within the team before involving the instructor or TA.
-Communicate
-Offer help
-Give a serious warning if the member ignores basic communication
+Firstly, we will try to resolve disagreements by talking to each other, explaining our opinions, and listening to everyone in turn. We will then discuss possible solutions and try to find a compromise that works best for the team. If we can’t agree by communicating, we can vote on the best solution, and the majority-chosen one will be implemented. If the conflict continues or affects our working progress, we will ask the TA or professor for help.
 # Anticipated Challenges
 - Identify potential challenges your team may face and explain how you will address them.
 Consider situations such as:
