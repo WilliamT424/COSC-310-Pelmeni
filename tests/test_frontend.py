@@ -13,3 +13,9 @@ def test_frontend_script_is_served(client):
 def test_api_routes_still_work_with_frontend_mounted(client):
     assert client.get("/health").json() == {"status": "healthy"}
     assert client.get("/restaurants").status_code == 200
+
+
+def test_frontend_script_uses_menu_item_edit_endpoints(client):
+    script = client.get("/ui/app.js").text
+    assert 'jsonRequest("POST"' in script
+    assert 'jsonRequest("PATCH"' in script

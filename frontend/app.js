@@ -92,19 +92,65 @@ async function detailView(id) {
   }
   for (const menu of menus) {
     const list = el("div");
-    menusBox.append(el("h4", {}, menu.name), list);
+    const addForm = itemForm(null, async data => {
+      await api(`/restaurants/${id}/menus/${menu.id}/items`, jsonRequest("POST", data));
+      detailView(id);
+    });
+    menusBox.append(el("h4", {}, menu.name), list, el("details", {}, el("summary", {}, "Add item"), addForm));
     try {
       // Items come from the dedicated menu-items endpoint
       const items = await api(`/restaurants/${id}/menus/${menu.id}/items`);
-      list.replaceChildren(...items.map(item =>
-        el("div", { className: "card" },
-          el("span", { className: item.available ? "" : "unavailable" }, `${item.name} — $${item.price.toFixed(2)}`),
-          el("div", { className: "muted" }, item.description + (item.available ? "" : " (unavailable)")),
-        )));
+      list.replaceChildren(...items.map(item => itemCard(id, menu.id, item)));
     } catch (err) {
       list.append(el("p", { className: "error" }, err.message));
     }
   }
+}
+
+function jsonRequest(method, body) {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
+function itemCard(restaurantId, menuId, item) {
+  const card = el("div", { className: "card" },
+    el("span", { className: item.available ? "" : "unavailable" }, `${item.name} — $${item.price.toFixed(2)}`),
+    el("div", { className: "muted" }, item.description + (item.available ? "" : " (unavailable)")),
+  );
+  const editForm = itemForm(item, async data => {
+    await api(`/restaurants/${restaurantId}/menus/${menuId}/items/${item.id}`, jsonRequest("PATCH", data));
+    detailView(restaurantId);
+  });
+  card.append(el("details", {}, el("summary", {}, "Edit"), editForm));
+  return card;
+}
+
+// Shared add/edit form for a menu item; onSave(data) may throw, which is shown inline
+function itemForm(item, onSave) {
+  const message = el("p", { className: "error" });
+  const available = el("input", { name: "available", type: "checkbox", checked: item?.available ?? true });
+  const form = el("form", { className: "edit" },
+    field("Name", "name", "text", item?.name ?? "", { required: true }),
+    field("Description", "description", "text", item?.description ?? ""),
+    field("Price", "price", "number", item?.price ?? "", { required: true, min: 0, step: "0.01" }),
+    el("label", {}, "Available", available),
+    el("button", { type: "submit" }, item ? "Save item" : "Add item"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const values = Object.fromEntries(new FormData(form));
+    try {
+      await onSave({
+        name: values.name,
+        description: values.description,
+        price: Number(values.price),
+        available: available.checked,
+      });
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
 }
 
 // Create / update restaurant ------------------------------------------------
