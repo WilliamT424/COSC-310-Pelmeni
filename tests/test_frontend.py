@@ -19,3 +19,7 @@ def test_frontend_script_uses_menu_item_edit_endpoints(client):
     script = client.get("/ui/app.js").text
     assert 'jsonRequest("POST"' in script
     assert 'jsonRequest("PATCH"' in script
+
+
+def test_frontend_script_does_not_choose_restaurant_ids(client):
+    assert "data.id" not in client.get("/ui/app.js").text
