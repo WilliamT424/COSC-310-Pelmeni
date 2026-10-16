@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, status, HTTPException, Query
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
-from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item
+from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_to_menu, create_menu_item, update_menu_item
 from app.schemas.menu import menuItem
 from app.schemas.restaurant import Restaurant, RestaurantUpdate
 
@@ -87,6 +87,21 @@ def update_restaurant_route( restaurant_id: int, updates: RestaurantUpdate):
     updated_data = updates.model_dump(exclude_unset=True)
 
     return update_restaurant_service(restaurant_id, updated_data)
+
+@app.post("/restaurants/{restaurant_id}/menu")
+async def add_item_to_menu(menu_id: int, item_name: str, item_price: float, item_inventory: int, available: bool, description: str):
+
+    new_item = create_menu_item(menu_id, item_name, item_price, available, description)
+    add_to_menu(menu_id, new_item)
+
+    return {"message": "Menu item created successfully"}
+
+@app.put("/menu/{item_id}") #update data
+async def update_item_in_menu(menu_id: int, updates: dict):
+
+    update_menu_item(menu_id, updates)
+
+    return {"message": "Menu item updated successfully"}
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")

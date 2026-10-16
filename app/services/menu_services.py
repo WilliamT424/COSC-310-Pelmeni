@@ -1,4 +1,50 @@
+import json 
+from app.repositories.menu_items_repositories import write_json_file_by_restaurant, read_menu_json_file
+from app.repositories.restaurant_repositories import read_json_file
+from app.schemas.menu import menuItem
 from app.repositories.menu_repositories import read_menus_file
+
+def create_menu_item(restaurant_id, menu_id, item_name, item_price, available, description):
+    
+    data = read_menu_json_file(menu_id)
+
+    new_item = menuItem(
+        id = len(data) + 1,
+        name = item_name,
+        price = item_price,
+        available = available,
+        description = description
+    )
+
+    return new_item
+
+def add_to_menu(restaurant_id, menu_item: menuItem):
+
+    new_item = {
+        "id": menu_item.id,
+        "name": menu_item.name,
+        "price": menu_item.price,
+        "available": menu_item.available,
+        "description": menu_item.description,
+        "restaurant_id": menu_item.restaurant_id,
+        "restaurant_name": menu_item.restaurant_name,
+    }
+
+    write_json_file_by_restaurant(restaurant_id, new_item)
+
+def update_menu_item(restaurant_id, updates: dict):
+
+    updated_item = {
+        "id": updates.get("id"),
+        "name": updates.get("name"),
+        "price": updates.get("price"),
+        "available": updates.get("available"),
+        "description": updates.get("description"),
+        "restaurant_id": updates.get("restaurant_id"),
+        "restaurant_name": updates.get("restaurant_name"),
+    }
+
+    write_json_file_by_restaurant(restaurant_id, updated_item)    
 
 
 def list_menus_for_restaurant(restaurant_id: int) -> list[dict]:
