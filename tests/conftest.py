@@ -37,3 +37,16 @@ def client(monkeypatch, sample_restaurants, sample_menus):
     with TestClient(app) as test_client:
         yield test_client
 
+
+
+@pytest.fixture(scope="session", autouse=True)
+def real_data_files_untouched():
+    #Fails the run if any test writes to the committed data files
+    import hashlib
+    from pathlib import Path
+
+    data_dir = Path(__file__).resolve().parent.parent / "data"
+    digest = lambda: {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in data_dir.glob("*.json")}
+    before = digest()
+    yield
+    assert digest() == before, "A test modified a file in data/; tests must use temp copies"

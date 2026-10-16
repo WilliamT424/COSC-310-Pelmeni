@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class Restaurant(BaseModel):
     id: int
     name: str
-    rating: int
+    rating: float
     cuisine: str
     deliveryTime: int
 
