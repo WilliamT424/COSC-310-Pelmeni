@@ -1,7 +1,7 @@
 import json 
-from repositories.menu_items_repositories import write_json_file_by_restaurant, read_menu_json_file
-from repositories.restaurant_repositories import read_json_file
-from schemas.menu_item import MenuItem
+from app.repositories.menu_items_repositories import write_json_file_by_restaurant, read_menu_json_file
+from app.repositories.restaurant_repositories import read_json_file
+from app.schemas.menu_item import MenuItem
 
 def create_menu_item(restaurant_id, item_name, item_price, item_inventory):
     
