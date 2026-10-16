@@ -6,7 +6,7 @@ from fastapi import FastAPI, status, HTTPException, Query
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
-from app.schemas.restaurant import Restaurant, RestaurantUpdate
+from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 
 app = FastAPI()
 
@@ -33,7 +33,7 @@ async def get_restaurants():
 async def search_restaurants_route(
     name: Optional[str] = Query(None, description="Case-insensitive substring of the restaurant name"),
     cuisine: Optional[str] = Query(None, description="Case-insensitive substring of the cuisine"),
-    min_rating: Optional[int] = Query(None, ge=0, le=5, description="Minimum rating (0-5)"),
+    min_rating: Optional[float] = Query(None, ge=0, le=5, description="Minimum rating (0-5)"),
     max_delivery_time: Optional[int] = Query(None, ge=0, description="Maximum delivery time in minutes"),
 ):
     return {"restaurants": search_restaurants(name, cuisine, min_rating, max_delivery_time)}
@@ -47,10 +47,9 @@ async def restaurant_details(restaurant_id: int):
 
 @app.get("/restaurants/{restaurant_id}/menus")  #get request to view menus
 async def get_restaurant_menus(restaurant_id: int):
-    menus = list_menus_for_restaurant(restaurant_id)
-    if not menus:
-        raise HTTPException(status_code=404, detail="Menu not found")
-    return menus
+    if get_restaurant(restaurant_id) is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return list_menus_for_restaurant(restaurant_id)
 
 @app.get(
     "/restaurants/{restaurant_id}/menus/{menu_id}/items",
@@ -78,11 +77,24 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
-@app.post("/restaurants", status_code=201,response_model=Restaurant,responses={409: {"description": "Restaurant ID already exists"}})
-async def create_restaurant(new_restaurant: Restaurant):
+@app.post(
+    "/restaurants",
+    status_code=201,
+    response_model=Restaurant,
+    summary="Create a restaurant",
+    description="Creates a restaurant and persists it. The id is assigned by the server.",
+    responses={422: {"description": "Invalid restaurant data (missing field, rating outside 0-5, negative delivery time, empty name or cuisine)"}},
+)
+async def create_restaurant(new_restaurant: RestaurantCreate):
     return create_restaurant_service(new_restaurant)
 
-@app.patch( "/restaurants/{restaurant_id}",response_model=Restaurant,responses={404: {"description": "Restaurant not found"}})
+@app.patch(
+    "/restaurants/{restaurant_id}",
+    response_model=Restaurant,
+    summary="Update a restaurant",
+    description="Updates only the provided fields of an existing restaurant. The id cannot be changed and provided fields cannot be null.",
+    responses={404: {"description": "Restaurant not found"}, 422: {"description": "Invalid restaurant data"}},
+)
 def update_restaurant_route( restaurant_id: int, updates: RestaurantUpdate):
     updated_data = updates.model_dump(exclude_unset=True)
 

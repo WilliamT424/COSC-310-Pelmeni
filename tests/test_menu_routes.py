@@ -18,10 +18,16 @@ def test_get_restaurant_menus_includes_availability(client):
     assert items[1]["available"] is False
 
 
-#Checks how the API handles a request for a restaurant that has no matching menu
+#Checks that a request for a restaurant that does not exist returns 404
 def test_get_missing_restaurant_menus_returns_404(client):
     response = client.get("/restaurants/999/menus")
     assert response.status_code == 404
+
+#Checks that an existing restaurant with no menus returns an empty list rather than 404
+def test_get_menus_for_restaurant_without_menus_returns_empty_list(client):
+    response = client.get("/restaurants/102/menus")
+    assert response.status_code == 200
+    assert response.json() == []
 
 #Checks that the endpoint rejects an unsupported HTTP method
 def test_get_restaurant_menus_rejects_unsupported_method(client):

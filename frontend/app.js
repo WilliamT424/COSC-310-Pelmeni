@@ -160,7 +160,7 @@ async function formView(id) {
   const form = el("form", { className: "edit" },
     field("Name", "name", "text", existing?.name ?? "", { required: true }),
     field("Cuisine", "cuisine", "text", existing?.cuisine ?? "", { required: true }),
-    field("Rating (0-5)", "rating", "number", existing?.rating ?? "", { required: true, min: 0, max: 5, step: existing ? "any" : 1 }),
+    field("Rating (0-5)", "rating", "number", existing?.rating ?? "", { required: true, min: 0, max: 5, step: "any" }),
     field("Delivery time (min)", "deliveryTime", "number", existing?.deliveryTime ?? "", { required: true, min: 0 }),
     el("button", { type: "submit" }, existing ? "Save changes" : "Create restaurant"),
   );
@@ -180,9 +180,7 @@ async function formView(id) {
           body: JSON.stringify(data),
         });
       } else {
-        // The API requires a client-supplied id: use the next free one
-        const all = await api("/restaurants");
-        data.id = Math.max(0, ...all.restaurants.map(r => r.id)) + 1;
+        // The server assigns the id
         saved = await api("/restaurants", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
