@@ -4,8 +4,8 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, status, HTTPException, Query
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
-from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_to_menu, create_menu_item, update_menu_item
-from app.schemas.menu import menuItem
+from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
+from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantUpdate
 
 app = FastAPI()
@@ -88,20 +88,32 @@ def update_restaurant_route( restaurant_id: int, updates: RestaurantUpdate):
 
     return update_restaurant_service(restaurant_id, updated_data)
 
-@app.post("/restaurants/{restaurant_id}/menu")
-async def add_item_to_menu(menu_id: int, item_name: str, item_price: float, item_inventory: int, available: bool, description: str):
+@app.post(
+    "/restaurants/{restaurant_id}/menus/{menu_id}/items",
+    status_code=201,
+    response_model=menuItem,
+    summary="Add a menu item",
+    description="Adds a new item to the given menu. The item id is assigned by the server.",
+    responses={404: {"description": "Menu not found for this restaurant"}, 422: {"description": "Invalid item data"}},
+)
+async def add_item_to_menu(restaurant_id: int, menu_id: int, new_item: MenuItemCreate):
+    item = add_menu_item(restaurant_id, menu_id, new_item)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Menu not found")
+    return item
 
-    new_item = create_menu_item(menu_id, item_name, item_price, available, description)
-    add_to_menu(menu_id, new_item)
-
-    return {"message": "Menu item created successfully"}
-
-@app.put("/menu/{item_id}") #update data
-async def update_item_in_menu(menu_id: int, updates: dict):
-
-    update_menu_item(menu_id, updates)
-
-    return {"message": "Menu item updated successfully"}
+@app.patch(
+    "/restaurants/{restaurant_id}/menus/{menu_id}/items/{item_id}",
+    response_model=menuItem,
+    summary="Update a menu item",
+    description="Updates only the provided fields of an existing menu item.",
+    responses={404: {"description": "Menu or menu item not found"}, 422: {"description": "Invalid item data"}},
+)
+async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, updates: MenuItemUpdate):
+    item = update_menu_item(restaurant_id, menu_id, item_id, updates)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return item
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")

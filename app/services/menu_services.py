@@ -1,50 +1,5 @@
-import json 
-from app.repositories.menu_items_repositories import write_json_file_by_restaurant, read_menu_json_file
-from app.repositories.restaurant_repositories import read_json_file
-from app.schemas.menu import menuItem
-from app.repositories.menu_repositories import read_menus_file
-
-def create_menu_item(restaurant_id, menu_id, item_name, item_price, available, description):
-    
-    data = read_menu_json_file(menu_id)
-
-    new_item = menuItem(
-        id = len(data) + 1,
-        name = item_name,
-        price = item_price,
-        available = available,
-        description = description
-    )
-
-    return new_item
-
-def add_to_menu(restaurant_id, menu_item: menuItem):
-
-    new_item = {
-        "id": menu_item.id,
-        "name": menu_item.name,
-        "price": menu_item.price,
-        "available": menu_item.available,
-        "description": menu_item.description,
-        "restaurant_id": menu_item.restaurant_id,
-        "restaurant_name": menu_item.restaurant_name,
-    }
-
-    write_json_file_by_restaurant(restaurant_id, new_item)
-
-def update_menu_item(restaurant_id, updates: dict):
-
-    updated_item = {
-        "id": updates.get("id"),
-        "name": updates.get("name"),
-        "price": updates.get("price"),
-        "available": updates.get("available"),
-        "description": updates.get("description"),
-        "restaurant_id": updates.get("restaurant_id"),
-        "restaurant_name": updates.get("restaurant_name"),
-    }
-
-    write_json_file_by_restaurant(restaurant_id, updated_item)    
+from app.repositories.menu_repositories import read_menus_file, write_menus_file
+from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 
 
 def list_menus_for_restaurant(restaurant_id: int) -> list[dict]:
@@ -72,5 +27,39 @@ def get_menu_item(restaurant_id: int, menu_id: int, item_id: int) -> dict | None
         return None
     for item in items:
         if item["id"] == item_id:
+            return item
+    return None
+
+
+def _find_menu(menus: list[dict], restaurant_id: int, menu_id: int) -> dict | None:
+    for menu in menus:
+        if menu["restaurant_id"] == restaurant_id and menu["id"] == menu_id:
+            return menu
+    return None
+
+
+def add_menu_item(restaurant_id: int, menu_id: int, new_item: MenuItemCreate) -> dict | None:
+    """Append an item to a menu with the next free item id. Returns None if the menu doesn't exist."""
+    menus = read_menus_file()
+    menu = _find_menu(menus, restaurant_id, menu_id)
+    if menu is None:
+        return None
+    next_id = max((item["id"] for item in menu["items"]), default=0) + 1
+    item = menuItem(id=next_id, **new_item.model_dump()).model_dump()
+    menu["items"].append(item)
+    write_menus_file(menus)
+    return item
+
+
+def update_menu_item(restaurant_id: int, menu_id: int, item_id: int, updates: MenuItemUpdate) -> dict | None:
+    """Apply the provided fields to an item. Returns None if the menu or item doesn't exist."""
+    menus = read_menus_file()
+    menu = _find_menu(menus, restaurant_id, menu_id)
+    if menu is None:
+        return None
+    for item in menu["items"]:
+        if item["id"] == item_id:
+            item.update(updates.model_dump(exclude_unset=True))
+            write_menus_file(menus)
             return item
     return None

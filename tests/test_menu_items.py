@@ -47,7 +47,7 @@ def test_get_single_menu_item_unknown_menu_returns_404(client):
 
 
 def test_menu_items_reject_unsupported_method(client):
-    assert client.post("/restaurants/101/menus/1/items").status_code == 405
+    assert client.delete("/restaurants/101/menus/1/items").status_code == 405
 
 
 def test_service_helpers(monkeypatch, sample_menus):
