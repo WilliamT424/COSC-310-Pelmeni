@@ -1,4 +1,3 @@
-import json  
 from typing import Optional
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
@@ -96,9 +95,10 @@ async def create_restaurant(new_restaurant: RestaurantCreate):
     responses={404: {"description": "Restaurant not found"}, 422: {"description": "Invalid restaurant data"}},
 )
 def update_restaurant_route( restaurant_id: int, updates: RestaurantUpdate):
-    updated_data = updates.model_dump(exclude_unset=True)
-
-    return update_restaurant_service(restaurant_id, updated_data)
+    restaurant = update_restaurant_service(restaurant_id, updates.model_dump(exclude_unset=True))
+    if restaurant is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return restaurant
 
 @app.post(
     "/restaurants/{restaurant_id}/menus/{menu_id}/items",

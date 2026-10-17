@@ -1,16 +1,12 @@
-import json
-
-from fastapi import HTTPException 
 from app.repositories.restaurant_repositories import add_restaurant, read_json_file, update_restaurant
 from app.schemas.restaurant import Restaurant, RestaurantCreate
 
 
-def list_restaurants():
-
+def list_restaurants() -> list[dict]:
+    """All restaurants. Raises pydantic.ValidationError if the stored data is malformed."""
     data = read_json_file()
     for restaurant in data:
-        restaurant_obj = Restaurant(**restaurant)
-        print(restaurant_obj)
+        Restaurant(**restaurant)
     return data
 
 def get_restaurant(restaurant_id: int):
@@ -36,16 +32,10 @@ def search_restaurants(name=None, cuisine=None, min_rating=None, max_delivery_ti
     return results
 
 
-def update_restaurant_service(restaurant_id, updated_data):
-    restaurant = update_restaurant(restaurant_id, updated_data)
+def update_restaurant_service(restaurant_id: int, updated_data: dict) -> dict | None:
+    """Apply the provided fields to a restaurant. Returns None if it doesn't exist."""
+    return update_restaurant(restaurant_id, updated_data)
 
-    if restaurant is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Restaurant not found"
-        )
-
-    return restaurant
 
 def create_restaurant_service(new_restaurant: RestaurantCreate) -> Restaurant:
     """Store a new restaurant under the next free id (ids are never reused or client-chosen)."""
