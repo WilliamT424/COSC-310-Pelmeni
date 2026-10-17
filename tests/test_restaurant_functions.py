@@ -99,3 +99,20 @@ def test_update_accepts_decimal_rating(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["rating"] == 3.5
+
+
+def test_service_update_returns_none_for_unknown_restaurant(monkeypatch):
+    monkeypatch.setattr(restaurant_services, "update_restaurant", lambda id, data: None)
+    assert restaurant_services.update_restaurant_service(999, {"name": "Unknown"}) is None
+
+
+def test_services_do_not_depend_on_fastapi():
+    import app.services.menu_services as menu_services
+    for module in (restaurant_services, menu_services):
+        assert not hasattr(module, "HTTPException")
+
+
+def test_list_restaurants_does_not_print(monkeypatch, capsys):
+    monkeypatch.setattr(restaurant_services, "read_json_file", lambda: [dict(r) for r in SAMPLE])
+    restaurant_services.list_restaurants()
+    assert capsys.readouterr().out == ""
