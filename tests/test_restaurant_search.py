@@ -36,6 +36,10 @@ def test_search_by_min_rating(search_client):
     assert ids(search_client.get("/restaurants/search?min_rating=4")) == {1, 2}
 
 
+def test_search_by_decimal_min_rating(search_client):
+    assert ids(search_client.get("/restaurants/search?min_rating=4.5")) == {1}
+
+
 def test_search_by_max_delivery_time(search_client):
     assert ids(search_client.get("/restaurants/search?max_delivery_time=20")) == {1, 3}
 

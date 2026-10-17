@@ -2,7 +2,7 @@ import json
 
 from fastapi import HTTPException 
 from app.repositories.restaurant_repositories import add_restaurant, read_json_file, update_restaurant
-from app.schemas.restaurant import Restaurant
+from app.schemas.restaurant import Restaurant, RestaurantCreate
 
 
 def list_restaurants():
@@ -47,13 +47,7 @@ def update_restaurant_service(restaurant_id, updated_data):
 
     return restaurant
 
-def create_restaurant_service(new_restaurant):
-    restaurants = list_restaurants()
-
-    for restaurant in restaurants:
-        if restaurant["id"] == new_restaurant.id:
-            raise HTTPException(
-                status_code=409,
-                detail="Restaurant with this ID already exists"
-            )
-    return add_restaurant(new_restaurant)
+def create_restaurant_service(new_restaurant: RestaurantCreate) -> Restaurant:
+    """Store a new restaurant under the next free id (ids are never reused or client-chosen)."""
+    next_id = max((r["id"] for r in read_json_file()), default=0) + 1
+    return add_restaurant(Restaurant(id=next_id, **new_restaurant.model_dump()))

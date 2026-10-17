@@ -38,7 +38,9 @@ def new_client():
     return TestClient(app)
 
 
-NEW_RESTAURANT = {"id": 100, "name": "Persist Cafe", "rating": 4, "cuisine": "Test", "deliveryTime": 25}
+NEW_RESTAURANT = {"name": "Persist Cafe", "rating": 4, "cuisine": "Test", "deliveryTime": 25}
+NEW_ID = 9  # the committed dataset holds ids 1-8, so the server assigns 9 to the first new restaurant
+STORED_NEW_RESTAURANT = {"id": NEW_ID, **NEW_RESTAURANT}
 
 
 # --- committed dataset is valid -----------------------------------------------
@@ -63,20 +65,20 @@ def test_committed_menus_are_valid_and_consistent():
 def test_created_restaurant_is_written_to_file(files):
     restaurants, _ = files
     assert new_client().post("/restaurants", json=NEW_RESTAURANT).status_code == 201
-    assert NEW_RESTAURANT in load(restaurants)
+    assert STORED_NEW_RESTAURANT in load(restaurants)
 
 
 def test_created_restaurant_is_visible_to_a_new_client(files):
     new_client().post("/restaurants", json=NEW_RESTAURANT)
-    body = new_client().get("/restaurants/100").json()
-    assert body == NEW_RESTAURANT
-    assert 100 in {r["id"] for r in new_client().get("/restaurants").json()["restaurants"]}
+    body = new_client().get(f"/restaurants/{NEW_ID}").json()
+    assert body == STORED_NEW_RESTAURANT
+    assert NEW_ID in {r["id"] for r in new_client().get("/restaurants").json()["restaurants"]}
 
 
 def test_created_restaurant_is_found_by_search(files):
     new_client().post("/restaurants", json=NEW_RESTAURANT)
     found = new_client().get("/restaurants/search?name=persist").json()["restaurants"]
-    assert [r["id"] for r in found] == [100]
+    assert [r["id"] for r in found] == [NEW_ID]
 
 
 def test_restaurant_data_survives_a_process_restart(files):
@@ -89,7 +91,7 @@ def test_restaurant_data_survives_a_process_restart(files):
     )
     out = subprocess.run([sys.executable, "-c", code, str(restaurants)], cwd=ROOT,
                          capture_output=True, text=True, check=True).stdout
-    assert NEW_RESTAURANT in json.loads(out)
+    assert STORED_NEW_RESTAURANT in json.loads(out)
 
 
 def test_update_restaurant_is_written_and_leaves_others_untouched(files):
@@ -109,7 +111,7 @@ def test_ids_stay_stable_and_unique_after_create_and_update(files):
     new_client().patch("/restaurants/2", json={"name": "Renamed"})
     new_client().patch("/restaurants/3", json={"id": 777})  # id is not an updatable field
     after_ids = [r["id"] for r in load(restaurants)]
-    assert after_ids == before_ids + [100]
+    assert after_ids == before_ids + [NEW_ID]
     assert len(set(after_ids)) == len(after_ids)
 
 
@@ -122,17 +124,19 @@ def test_stored_restaurants_remain_valid_after_writes(files):
     assert new_client().get("/restaurants").status_code == 200
 
 
-def test_duplicate_create_does_not_change_file(files):
+def test_created_restaurant_ids_are_unique_and_never_client_chosen(files):
     restaurants, _ = files
-    before = restaurants.read_text()
-    assert new_client().post("/restaurants", json={**NEW_RESTAURANT, "id": 1}).status_code == 409
-    assert restaurants.read_text() == before
+    first = new_client().post("/restaurants", json={**NEW_RESTAURANT, "id": 1}).json()
+    second = new_client().post("/restaurants", json=NEW_RESTAURANT).json()
+    assert (first["id"], second["id"]) == (NEW_ID, NEW_ID + 1)
+    ids = [r["id"] for r in load(restaurants)]
+    assert len(set(ids)) == len(ids)
 
 
 def test_invalid_create_does_not_change_file(files):
     restaurants, _ = files
     before = restaurants.read_text()
-    assert new_client().post("/restaurants", json={"id": 100, "name": "Bad"}).status_code == 422
+    assert new_client().post("/restaurants", json={"name": "Bad"}).status_code == 422
     assert restaurants.read_text() == before
 
 
@@ -198,3 +202,34 @@ def test_decimal_rating_update_is_stored_and_does_not_break_listing(files):
     assert next(r for r in load(restaurants) if r["id"] == 1)["rating"] == 4.5
     assert new_client().get("/restaurants").status_code == 200
     assert new_client().get("/restaurants/1").json()["rating"] == 4.5
+
+
+def test_null_or_invalid_update_does_not_change_file(files):
+    restaurants, _ = files
+    before = restaurants.read_text()
+    for body in ({"name": None}, {"rating": None}, {"rating": 9}, {"deliveryTime": -1}):
+        assert new_client().patch("/restaurants/1", json=body).status_code == 422
+    assert restaurants.read_text() == before
+    assert new_client().get("/restaurants").status_code == 200
+
+
+def test_invalid_create_values_do_not_change_file(files):
+    restaurants, _ = files
+    before = restaurants.read_text()
+    for change in ({"rating": 7}, {"deliveryTime": -1}, {"name": ""}):
+        assert new_client().post("/restaurants", json={**NEW_RESTAURANT, **change}).status_code == 422
+    assert restaurants.read_text() == before
+
+
+def test_restaurant_write_leaves_no_temp_files_behind(files):
+    restaurants, _ = files
+    new_client().post("/restaurants", json=NEW_RESTAURANT)
+    new_client().patch("/restaurants/1", json={"name": "Renamed"})
+    assert [p.name for p in restaurants.parent.glob("*.tmp")] == []
+
+
+def test_restaurant_without_menus_returns_empty_list_but_unknown_restaurant_is_404(files):
+    created = new_client().post("/restaurants", json=NEW_RESTAURANT).json()
+    response = new_client().get(f"/restaurants/{created['id']}/menus")
+    assert response.status_code == 200 and response.json() == []
+    assert new_client().get("/restaurants/999/menus").status_code == 404
