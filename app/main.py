@@ -6,6 +6,8 @@ from app.services.restaurant_services import create_restaurant_service, list_res
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
+from schemas.customer import Customer, CustomerCreate, CustomerUpdate
+from services.customer_services import register_new_customer, retrieve_customer, update_customer
 
 app = FastAPI()
 
@@ -76,6 +78,43 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
+@app.get(
+    "/customers/{customer_id}",
+    response_model=Customer,
+    summary="Get a customer",
+    description="Returns a single customer by their ID.",
+    responses={404: {"description": "Customer not found"}},
+)
+async def get_customer(customer_id: int):
+    customer = retrieve_customer(customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@app.post(
+    "/customers",
+    status_code=201,
+    response_model=Customer,
+    summary="Create a customer",
+    description="Creates a customer and persists it. The id is assigned by the server.",
+    responses={422: {"description": "Invalid customer data"}},
+)
+async def create_customer(new_customer: CustomerCreate):
+    return register_new_customer(new_customer)
+
+@app.patch(
+    "/customers/{customer_id}",
+    response_model=Customer,
+    summary="Update a customer",
+    description="Updates only the provided fields of an existing customer.",
+    responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
+)
+async def update_customer_route(customer_id: int, updates: CustomerUpdate):
+    customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
 @app.post(
     "/restaurants",
     status_code=201,
@@ -126,6 +165,8 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
+
+
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")
