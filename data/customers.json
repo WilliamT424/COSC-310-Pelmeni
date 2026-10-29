@@ -1,0 +1,69 @@
+
+ [
+    {
+      "customerId": "CUST-1001",
+      "name": "Emily Johnson",
+      "email": "emily.johnson@gmail.com",
+      "deliveryAddress": {
+        "street": "1450 Bernard Avenue",
+        "city": "Kelowna",
+        "province": "BC",
+        "postalCode": "V1Y 6R8",
+        "country": "Canada"
+      },
+      "status": "active"
+    },
+    {
+      "customerId": "CUST-1002",
+      "name": "Michael Chen",
+      "email": "michael.chen@gmail.com",
+      "deliveryAddress": {
+        "street": "2100 Springfield Road",
+        "city": "Kelowna",
+        "province": "BC",
+        "postalCode": "V1Y 7X1",
+        "country": "Canada"
+      },
+      "status": "active"
+    },
+    {
+      "customerId": "CUST-1003",
+      "name": "Sophia Martinez",
+      "email": "sophia.martinez@gmail.com",
+      "deliveryAddress": {
+        "street": "3150 Lakeshore Road",
+        "city": "Kelowna",
+        "province": "BC",
+        "postalCode": "V1W 3T1",
+        "country": "Canada"
+      },
+      "status": "inactive"
+    },
+    {
+      "customerId": "CUST-1004",
+      "name": "Liam Wilson",
+      "email": "liam.wilson@gmail.com",
+      "deliveryAddress": {
+        "street": "1890 Cooper Road",
+        "city": "Kelowna",
+        "province": "BC",
+        "postalCode": "V1Y 8B7",
+        "country": "Canada"
+      },
+      "status": "active"
+    },
+    {
+      "customerId": "CUST-1005",
+      "name": "Olivia Brown",
+      "email": "olivia.brown@gmail.com",
+      "deliveryAddress": {
+        "street": "5250 Big White Road",
+        "city": "Kelowna",
+        "province": "BC",
+        "postalCode": "V1P 1P3",
+        "country": "Canada"
+      },
+      "status": "inactive"
+    }
+]
+
