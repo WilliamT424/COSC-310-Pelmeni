@@ -50,3 +50,43 @@ def real_data_files_untouched():
     before = digest()
     yield
     assert digest() == before, "A test modified a file in data/; tests must use temp copies"
+
+
+# --- Authentication / authorization fixtures (contract assumptions live in auth_support.py) ---
+
+from auth_support import CUSTOMER, MANAGER, bearer, token_for
+
+
+@pytest.fixture
+def isolated_users():
+    #TODO(auth implementer): reset/redirect the user store here (e.g. monkeypatch the users
+    #repository to an in-memory list or tmp_path file) so every test starts with no users and
+    #nothing is written to data/. The session guard above fails the run if data/ is touched.
+    yield
+
+
+@pytest.fixture
+def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolated_users):
+    #TestClient backed by temp copies of the sample data: unlike `client`, writes really happen
+    #(so tests can see whether a request changed anything) but never reach the files in data/
+    import json
+    import app.repositories.restaurant_repositories as restaurant_repositories
+    import app.repositories.menu_repositories as menu_repositories
+
+    restaurants_file, menus_file = tmp_path / "restaurants.json", tmp_path / "menus.json"
+    restaurants_file.write_text(json.dumps(sample_restaurants))
+    menus_file.write_text(json.dumps(sample_menus))
+    monkeypatch.setattr(restaurant_repositories, "RESTAURANTS_FILE", restaurants_file)
+    monkeypatch.setattr(menu_repositories, "MENUS_FILE", menus_file)
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def customer_headers(auth_client):
+    return bearer(token_for(auth_client, "casey_customer", CUSTOMER))
+
+
+@pytest.fixture
+def manager_headers(auth_client):
+    return bearer(token_for(auth_client, "morgan_manager", MANAGER))
