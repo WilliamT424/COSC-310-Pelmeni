@@ -1,5 +1,5 @@
-from schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
-from repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
+from app.schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
+from app.repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
 
 
 def create_customer(name: str, email: str, address: Address, status: bool) -> Customer:
