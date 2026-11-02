@@ -25,7 +25,6 @@ class CustomerCreate(BaseModel):
     province: str = Field(min_length=1)
     postal_code: str = Field(min_length=1)
     country: str = Field(min_length=1)
-    status: bool = Field(...)
 
 class CustomerUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1)
