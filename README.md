@@ -91,6 +91,8 @@ Base URL: `http://127.0.0.1:8000`. All request and response bodies are JSON. Err
 
 **Menu Item** — `id` (int, assigned by the server within its menu), `name` (non-empty string), `description` (string, default `""`), `price` (float, ≥ 0), `available` (bool, default `true`)
 
+**Order** (Milestone 2) — `id`, `customer_id`, `restaurant_id`, `restaurant_name`, `items` (list of `{menu_id, menu_item_id, name, unit_price, quantity, line_total}`), `subtotal`, `total`, `status` (`pending`), `created_at` (UTC ISO-8601). Item names and prices are copied at checkout so the order stays accurate if the menu changes later. The cart and customer lookup behind checkout are **temporary** (`app/repositories/cart_repositories.py`, `app/services/customer_stub.py`) until those components are implemented.
+
 ### Endpoints
 
 | Method | Path | Description | Success | Errors |
@@ -107,6 +109,9 @@ Base URL: `http://127.0.0.1:8000`. All request and response bodies are JSON. Err
 | PATCH | `/restaurants/{restaurant_id}` | Update only the provided fields. Body: any of `name`, `rating`, `cuisine`, `deliveryTime`; the id cannot be changed and a provided field cannot be `null` | 200 + Restaurant | 404 not found, 422 invalid value |
 | POST | `/restaurants/{restaurant_id}/menus/{menu_id}/items` | Add a menu item. Body: `name`, `price`, optional `description`, `available` | 201 + Menu Item | 404 menu not found, 422 invalid item |
 | PATCH | `/restaurants/{restaurant_id}/menus/{menu_id}/items/{item_id}` | Update only the provided fields of a menu item | 200 + Menu Item | 404 menu or item not found, 422 invalid value |
+| POST | `/customers/{customer_id}/checkout` | Check out the customer's active cart: validates it against current restaurant/menu data, recalculates prices and the total, saves an order, then closes the cart (only after the order is saved) | 201 + Order | 404 customer or active cart not found, 409 cart invalid (empty, bad quantity, restaurant/item missing, item unavailable) |
+| GET | `/orders/{order_id}` | One order | 200 + Order | 404 order not found |
+| GET | `/customers/{customer_id}/orders` | A customer's orders, oldest first (`[]` if none) | 200 | |
 
 **Search filters** (query parameters on `GET /restaurants/search`, all optional):
 

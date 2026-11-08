@@ -4,6 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, status, HTTPException, Query
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
+from app.services.checkout_services import checkout, CheckoutError, CustomerNotFound, ActiveCartNotFound
+from app.services.order_services import get_order, list_orders_for_customer
+from app.schemas.order import Order
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 
@@ -126,6 +129,45 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
+
+@app.post(
+    "/customers/{customer_id}/checkout",
+    status_code=201,
+    response_model=Order,
+    summary="Check out the customer's active cart",
+    description="Validates the active cart against current restaurant and menu data, recalculates prices and the total, "
+                "saves an order, and only then closes the cart. Nothing is saved if validation fails.",
+    responses={404: {"description": "Customer not found, or the customer has no active cart"},
+               409: {"description": "Cart cannot be checked out (empty, invalid quantity, restaurant or item missing, item unavailable)"}},
+)
+async def checkout_route(customer_id: int):
+    try:
+        return checkout(customer_id)
+    except (CustomerNotFound, ActiveCartNotFound) as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except CheckoutError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+
+@app.get(
+    "/orders/{order_id}",
+    response_model=Order,
+    summary="Get an order",
+    responses={404: {"description": "Order not found"}},
+)
+async def get_order_route(order_id: int):
+    order = get_order(order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+@app.get(
+    "/customers/{customer_id}/orders",
+    response_model=list[Order],
+    summary="List a customer's orders",
+    description="Returns every order placed by the customer, oldest first. A customer with no orders gets an empty list.",
+)
+async def get_customer_orders(customer_id: int):
+    return list_orders_for_customer(customer_id)
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")

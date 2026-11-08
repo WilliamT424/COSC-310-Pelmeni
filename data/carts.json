@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "customer_id": 1,
+    "restaurant_id": 1,
+    "status": "active",
+    "items": [
+      {"menu_id": 1, "menu_item_id": 1, "quantity": 2},
+      {"menu_id": 1, "menu_item_id": 5, "quantity": 1}
+    ]
+  }
+]
