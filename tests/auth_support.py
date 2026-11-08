@@ -17,6 +17,10 @@ DEFAULT_ROLE = CUSTOMER
 
 PASSWORD = "S3cure-pass!"
 
+not_implemented = pytest.mark.xfail(
+    reason="planned feature, not implemented in the backend yet", strict=True,
+)
+
 CASEY_ID, CASEY_EMAIL = "CUST-9001", "casey.customer@example.com"
 MORGAN_ID, MORGAN_EMAIL = "CUST-9002", "morgan.manager@example.com"
 INACTIVE_ID, INACTIVE_EMAIL = "CUST-9003", "ian.inactive@example.com"
