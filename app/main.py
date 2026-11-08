@@ -6,6 +6,12 @@ from app.services.restaurant_services import create_restaurant_service, list_res
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
+from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
+from app.services.customer_services import register_new_customer, retrieve_customer, update_customer
+from app.services.auth_services import authenticate_user, create_access_token
+from fastapi import Depends
+from app.dependencies.dependencies import get_current_user, require_customer_ownership
+from app.schemas.auth import LoginRequest, Token
 
 app = FastAPI()
 
@@ -76,6 +82,43 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
+@app.get(
+    "/customers/{customer_id}",
+    response_model=Customer,
+    summary="Get a customer",
+    description="Returns a single customer by their ID.",
+    responses={404: {"description": "Customer not found"}},
+)
+async def get_customer(customer_id: int,customer=Depends(require_customer_ownership)) : #id or str?
+    customer = retrieve_customer(customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@app.post(
+    "/customers",
+    status_code=201,
+    response_model=Customer,
+    summary="Create a customer",
+    description="Creates a customer and persists it. The id is assigned by the server.",
+    responses={422: {"description": "Invalid customer data"}},
+)
+async def create_customer(new_customer: CustomerCreate):
+    return register_new_customer(new_customer)
+
+@app.patch(
+    "/customers/{customer_id}",
+    response_model=Customer,
+    summary="Update a customer",
+    description="Updates only the provided fields of an existing customer.",
+    responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
+)
+async def update_customer_route(customer_id: int, updates: CustomerUpdate,current_customer=Depends(require_customer_ownership)): #id or str?
+    customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
 @app.post(
     "/restaurants",
     status_code=201,
@@ -84,8 +127,8 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
     description="Creates a restaurant and persists it. The id is assigned by the server.",
     responses={422: {"description": "Invalid restaurant data (missing field, rating outside 0-5, negative delivery time, empty name or cuisine)"}},
 )
-async def create_restaurant(new_restaurant: RestaurantCreate):
-    return create_restaurant_service(new_restaurant)
+async def create_restaurant(new_restaurant: RestaurantCreate):#roles needed, discuss with Gurnoor
+   return create_restaurant_service(new_restaurant)
 
 @app.patch(
     "/restaurants/{restaurant_id}",
@@ -129,3 +172,31 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")
+
+@app.post("/auth/login", response_model=Token)
+def login(credentials: LoginRequest):
+
+    customer = authenticate_user(
+        credentials.email,
+        credentials.password
+    )
+
+    if customer is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password"
+        )
+
+    token = create_access_token(customer["customerId"]) #review later, based on JSON for now
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
+
+@app.get("/auth/me")
+def get_my_account(customer=Depends(get_current_user)):
+    return {
+        "customerId": customer["customerId"],
+        "name": customer["name"],
+        "email": customer["email"]
+    }

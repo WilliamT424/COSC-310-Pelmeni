@@ -1,82 +1,338 @@
-[{
+[
+  {
     "id": 1,
     "restaurant_id": 1,
     "name": "Zakura Menu",
     "items": [
-      {"id": 1, "name": "Salmon Nigiri", "description": "Fresh salmon over sushi rice", "price": 8.99, "available": true},
-      {"id": 2, "name": "California Roll", "description": "Crab, avocado and cucumber", "price": 11.99, "available": true},
-      {"id": 3, "name": "Tonkotsu Ramen", "description": "Pork broth with noodles and egg", "price": 17.99, "available": false},
-      {"id": 4, "name": "Chicken Teriyaki", "description": "Grilled chicken with teriyaki sauce and rice", "price": 16.99, "available": true},
-      {"id": 5, "name": "Miso Soup", "description": "Traditional soybean soup with tofu", "price": 4.99, "available": true}
-    ]},
-  {"id": 2,
+      {
+        "id": 1,
+        "name": "Salmon Nigiri",
+        "description": "Fresh salmon over sushi rice",
+        "price": 8.99,
+        "available": true
+      },
+      {
+        "id": 2,
+        "name": "California Roll",
+        "description": "Crab, avocado and cucumber",
+        "price": 11.99,
+        "available": true
+      },
+      {
+        "id": 3,
+        "name": "Tonkotsu Ramen",
+        "description": "Pork broth with noodles and egg",
+        "price": 17.99,
+        "available": false
+      },
+      {
+        "id": 4,
+        "name": "Chicken Teriyaki",
+        "description": "Grilled chicken with teriyaki sauce and rice",
+        "price": 16.99,
+        "available": true
+      },
+      {
+        "id": 5,
+        "name": "Miso Soup",
+        "description": "Traditional soybean soup with tofu",
+        "price": 4.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 2,
     "restaurant_id": 2,
     "name": "Marani Menu",
     "items": [
-      {"id": 6, "name": "Khachapuri", "description": "Georgian cheese-filled bread", "price": 15.99, "available": true},
-      {"id": 7, "name": "Khinkali", "description": "Georgian dumplings filled with seasoned beef", "price": 13.99, "available": true},
-      {"id": 8, "name": "Lobio", "description": "Traditional Georgian spiced bean stew", "price": 11.99, "available": false},
-      {"id": 9, "name": "Chicken Shkmeruli", "description": "Chicken in creamy garlic sauce", "price": 19.99, "available": true},
-      {"id": 10, "name": "Badrijani Nigvzit", "description": "Eggplant rolls with walnut filling", "price": 10.99, "available": true}
-    ]},
-  {"id": 3,
+      {
+        "id": 6,
+        "name": "Khachapuri",
+        "description": "Georgian cheese-filled bread",
+        "price": 15.99,
+        "available": true
+      },
+      {
+        "id": 7,
+        "name": "Khinkali",
+        "description": "Georgian dumplings filled with seasoned beef",
+        "price": 13.99,
+        "available": true
+      },
+      {
+        "id": 8,
+        "name": "Lobio",
+        "description": "Traditional Georgian spiced bean stew",
+        "price": 11.99,
+        "available": false
+      },
+      {
+        "id": 9,
+        "name": "Chicken Shkmeruli",
+        "description": "Chicken in creamy garlic sauce",
+        "price": 19.99,
+        "available": true
+      },
+      {
+        "id": 10,
+        "name": "Badrijani Nigvzit",
+        "description": "Eggplant rolls with walnut filling",
+        "price": 10.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 3,
     "restaurant_id": 3,
     "name": "FilletHouse Menu",
     "items": [
-      {"id": 11, "name": "Filet Mignon", "description": "Grilled tenderloin steak with mashed potatoes", "price": 34.99, "available": true},
-      {"id": 12, "name": "BBQ Ribs", "description": "Slow-cooked pork ribs with barbecue sauce", "price": 26.99, "available": true},
-      {"id": 13, "name": "Grilled Salmon", "description": "Atlantic salmon with seasonal vegetables", "price": 24.99, "available": false},
-      {"id": 14, "name": "Caesar Salad", "description": "Romaine lettuce, parmesan and croutons", "price": 12.99, "available": true},
-      {"id": 15, "name": "Loaded Fries", "description": "French fries with cheese, bacon and sour cream", "price": 10.99, "available": true}
-    ]},
-  {"id": 4,
+      {
+        "id": 11,
+        "name": "Filet Mignon",
+        "description": "Grilled tenderloin steak with mashed potatoes",
+        "price": 34.99,
+        "available": true
+      },
+      {
+        "id": 12,
+        "name": "BBQ Ribs",
+        "description": "Slow-cooked pork ribs with barbecue sauce",
+        "price": 26.99,
+        "available": true
+      },
+      {
+        "id": 13,
+        "name": "Grilled Salmon",
+        "description": "Atlantic salmon with seasonal vegetables",
+        "price": 24.99,
+        "available": false
+      },
+      {
+        "id": 14,
+        "name": "Caesar Salad",
+        "description": "Romaine lettuce, parmesan and croutons",
+        "price": 12.99,
+        "available": true
+      },
+      {
+        "id": 15,
+        "name": "Loaded Fries",
+        "description": "French fries with cheese, bacon and sour cream",
+        "price": 10.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 4,
     "restaurant_id": 4,
     "name": "Xing Yun Menu",
     "items": [
-      {"id": 16, "name": "Kung Pao Chicken", "description": "Spicy chicken with peanuts and vegetables", "price": 17.99, "available": true},
-      {"id": 17, "name": "Beef Chow Mein", "description": "Stir-fried noodles with beef and vegetables", "price": 16.99, "available": true},
-      {"id": 18, "name": "Pork Dumplings", "description": "Steamed dumplings with pork filling", "price": 11.99, "available": false},
-      {"id": 19, "name": "Sweet and Sour Chicken", "description": "Crispy chicken with sweet and sour sauce", "price": 17.99, "available": true},
-      {"id": 20, "name": "Vegetable Fried Rice", "description": "Fried rice with mixed vegetables and egg", "price": 12.99, "available": true}
-    ]},
-  {"id": 5,
+      {
+        "id": 16,
+        "name": "Kung Pao Chicken",
+        "description": "Spicy chicken with peanuts and vegetables",
+        "price": 17.99,
+        "available": true
+      },
+      {
+        "id": 17,
+        "name": "Beef Chow Mein",
+        "description": "Stir-fried noodles with beef and vegetables",
+        "price": 16.99,
+        "available": true
+      },
+      {
+        "id": 18,
+        "name": "Pork Dumplings",
+        "description": "Steamed dumplings with pork filling",
+        "price": 11.99,
+        "available": false
+      },
+      {
+        "id": 19,
+        "name": "Sweet and Sour Chicken",
+        "description": "Crispy chicken with sweet and sour sauce",
+        "price": 17.99,
+        "available": true
+      },
+      {
+        "id": 20,
+        "name": "Vegetable Fried Rice",
+        "description": "Fried rice with mixed vegetables and egg",
+        "price": 12.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 5,
     "restaurant_id": 5,
     "name": "BurgerBay Menu",
     "items": [
-      {"id": 21, "name": "Classic Cheeseburger", "description": "Beef patty with cheddar, lettuce and tomato", "price": 13.99, "available": true},
-      {"id": 22, "name": "Double Bacon Burger", "description": "Two beef patties with bacon and cheese", "price": 17.99, "available": false},
-      {"id": 23, "name": "Crispy Chicken Burger", "description": "Breaded chicken with lettuce and mayo", "price": 14.99, "available": true},
-      {"id": 24, "name": "French Fries", "description": "Golden crispy potato fries", "price": 5.99, "available": true},
-      {"id": 25, "name": "Chocolate Milkshake", "description": "Creamy chocolate ice cream milkshake", "price": 7.99, "available": true}
-    ]},
-  {"id": 6,
+      {
+        "id": 21,
+        "name": "Classic Cheeseburger",
+        "description": "Beef patty with cheddar, lettuce and tomato",
+        "price": 13.99,
+        "available": true
+      },
+      {
+        "id": 22,
+        "name": "Double Bacon Burger",
+        "description": "Two beef patties with bacon and cheese",
+        "price": 17.99,
+        "available": false
+      },
+      {
+        "id": 23,
+        "name": "Crispy Chicken Burger",
+        "description": "Breaded chicken with lettuce and mayo",
+        "price": 14.99,
+        "available": true
+      },
+      {
+        "id": 24,
+        "name": "French Fries",
+        "description": "Golden crispy potato fries",
+        "price": 5.99,
+        "available": true
+      },
+      {
+        "id": 25,
+        "name": "Chocolate Milkshake",
+        "description": "Creamy chocolate ice cream milkshake",
+        "price": 7.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 6,
     "restaurant_id": 6,
     "name": "Jasmine Menu",
     "items": [
-      {"id": 26, "name": "Chicken Katsu Curry", "description": "Crispy chicken cutlet with Japanese curry and rice", "price": 17.99, "available": true},
-      {"id": 27, "name": "Spicy Tuna Roll", "description": "Tuna sushi roll with spicy mayo", "price": 12.99, "available": true},
-      {"id": 28, "name": "Beef Udon", "description": "Thick udon noodles with beef in broth", "price": 16.99, "available": false},
-      {"id": 29, "name": "Vegetable Tempura", "description": "Lightly battered seasonal vegetables", "price": 10.99, "available": true},
-      {"id": 30, "name": "Mochi Ice Cream", "description": "Sweet rice cakes filled with ice cream", "price": 6.99, "available": true}
-    ]},
-  {"id": 7,
+      {
+        "id": 26,
+        "name": "Chicken Katsu Curry",
+        "description": "Crispy chicken cutlet with Japanese curry and rice",
+        "price": 17.99,
+        "available": true
+      },
+      {
+        "id": 27,
+        "name": "Spicy Tuna Roll",
+        "description": "Tuna sushi roll with spicy mayo",
+        "price": 12.99,
+        "available": true
+      },
+      {
+        "id": 28,
+        "name": "Beef Udon",
+        "description": "Thick udon noodles with beef in broth",
+        "price": 16.99,
+        "available": false
+      },
+      {
+        "id": 29,
+        "name": "Vegetable Tempura",
+        "description": "Lightly battered seasonal vegetables",
+        "price": 10.99,
+        "available": true
+      },
+      {
+        "id": 30,
+        "name": "Mochi Ice Cream",
+        "description": "Sweet rice cakes filled with ice cream",
+        "price": 6.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 7,
     "restaurant_id": 7,
     "name": "Paul Menu",
     "items": [
-      {"id": 31, "name": "Croissant", "description": "Traditional French butter croissant", "price": 4.99, "available": true},
-      {"id": 32, "name": "Quiche Lorraine", "description": "Savory tart with bacon, egg and cheese", "price": 12.99, "available": true},
-      {"id": 33, "name": "Croque Monsieur", "description": "Toasted ham and cheese sandwich", "price": 13.99, "available": false},
-      {"id": 34, "name": "French Onion Soup", "description": "Caramelized onion soup topped with melted cheese", "price": 10.99, "available": true},
-      {"id": 35, "name": "Chocolate Eclair", "description": "Choux pastry filled with cream and chocolate glaze", "price": 6.99, "available": true}
-    ]},
-  {"id": 8,
+      {
+        "id": 31,
+        "name": "Croissant",
+        "description": "Traditional French butter croissant",
+        "price": 4.99,
+        "available": true
+      },
+      {
+        "id": 32,
+        "name": "Quiche Lorraine",
+        "description": "Savory tart with bacon, egg and cheese",
+        "price": 12.99,
+        "available": true
+      },
+      {
+        "id": 33,
+        "name": "Croque Monsieur",
+        "description": "Toasted ham and cheese sandwich",
+        "price": 13.99,
+        "available": false
+      },
+      {
+        "id": 34,
+        "name": "French Onion Soup",
+        "description": "Caramelized onion soup topped with melted cheese",
+        "price": 10.99,
+        "available": true
+      },
+      {
+        "id": 35,
+        "name": "Chocolate Eclair",
+        "description": "Choux pastry filled with cream and chocolate glaze",
+        "price": 6.99,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": 8,
     "restaurant_id": 8,
     "name": "L'avenue Menu",
     "items": [
-      {"id": 36, "name": "Steak Frites", "description": "Grilled steak served with French fries", "price": 29.99, "available": true},
-      {"id": 37, "name": "Coq au Vin", "description": "Chicken braised in red wine sauce", "price": 25.99, "available": true},
-      {"id": 38, "name": "Ratatouille", "description": "Traditional French stewed vegetables", "price": 16.99, "available": true},
-      {"id": 39, "name": "Duck Confit", "description": "Slow-cooked duck leg with roasted potatoes", "price": 28.99, "available": false},
-      {"id": 40, "name": "Creme Brulee", "description": "Vanilla custard with caramelized sugar crust", "price": 9.99, "available": true}
-    ]}
+      {
+        "id": 36,
+        "name": "Steak Frites",
+        "description": "Grilled steak served with French fries",
+        "price": 29.99,
+        "available": true
+      },
+      {
+        "id": 37,
+        "name": "Coq au Vin",
+        "description": "Chicken braised in red wine sauce",
+        "price": 25.99,
+        "available": true
+      },
+      {
+        "id": 38,
+        "name": "Ratatouille",
+        "description": "Traditional French stewed vegetables",
+        "price": 16.99,
+        "available": true
+      },
+      {
+        "id": 39,
+        "name": "Duck Confit",
+        "description": "Slow-cooked duck leg with roasted potatoes",
+        "price": 28.99,
+        "available": false
+      },
+      {
+        "id": 40,
+        "name": "Creme Brulee",
+        "description": "Vanilla custard with caramelized sugar crust",
+        "price": 9.99,
+        "available": true
+      }
+    ]
+  }
 ]
