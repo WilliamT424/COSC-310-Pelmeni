@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret-key-that-is-at-least-32-bytes-long")
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,7 +22,6 @@ SAMPLE_MENUS = [
     }
 ]
 
-
 @pytest.fixture
 def sample_restaurants():
     return [dict(restaurant) for restaurant in SAMPLE_RESTAURANTS]
@@ -28,20 +30,15 @@ def sample_restaurants():
 def sample_menus():
     return [dict(menu) for menu in SAMPLE_MENUS]
 
-
 @pytest.fixture
 def client(monkeypatch, sample_restaurants, sample_menus):
-    #TestClient wired to isolated sample data instead of the committed dataset
     monkeypatch.setattr(restaurant_services, "read_json_file", lambda: sample_restaurants)
     monkeypatch.setattr(menu_services, "read_menus_file", lambda: sample_menus)
     with TestClient(app) as test_client:
         yield test_client
 
-
-
 @pytest.fixture(scope="session", autouse=True)
 def real_data_files_untouched():
-    #Fails the run if any test writes to the committed data files
     import hashlib
     from pathlib import Path
 
@@ -51,24 +48,29 @@ def real_data_files_untouched():
     yield
     assert digest() == before, "A test modified a file in data/; tests must use temp copies"
 
-
-# --- Authentication / authorization fixtures (contract assumptions live in auth_support.py) ---
-
-from auth_support import CUSTOMER, MANAGER, bearer, token_for
-
+from auth_support import CASEY_EMAIL, MORGAN_EMAIL, bearer, sample_customers, token_for
 
 @pytest.fixture
-def isolated_users():
-    #TODO(auth implementer): reset/redirect the user store here (e.g. monkeypatch the users
-    #repository to an in-memory list or tmp_path file) so every test starts with no users and
-    #nothing is written to data/. The session guard above fails the run if data/ is touched.
-    yield
+def isolated_users(tmp_path, monkeypatch):
+    import functools
+    import json
+    import app.services.auth_services as auth_services
+    import app.services.customer_services as customer_services
+    import app.dependencies.dependencies as dependencies
 
+    customers_file = tmp_path / "customers.json"
+    customers_file.write_text(json.dumps(sample_customers()))
+    for module, names in (
+        (auth_services, ["read_all_customers_json_file"]),
+        (dependencies, ["read_customer_json_file"]),
+        (customer_services, ["read_all_customers_json_file", "read_customer_json_file", "write_customer_json_file"]),
+    ):
+        for name in names:
+            monkeypatch.setattr(module, name, functools.partial(getattr(module, name), file_path=customers_file))
+    yield customers_file
 
 @pytest.fixture
 def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolated_users):
-    #TestClient backed by temp copies of the sample data: unlike `client`, writes really happen
-    #(so tests can see whether a request changed anything) but never reach the files in data/
     import json
     import app.repositories.restaurant_repositories as restaurant_repositories
     import app.repositories.menu_repositories as menu_repositories
@@ -81,12 +83,10 @@ def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolate
     with TestClient(app) as test_client:
         yield test_client
 
-
 @pytest.fixture
 def customer_headers(auth_client):
-    return bearer(token_for(auth_client, "casey_customer", CUSTOMER))
-
+    return bearer(token_for(auth_client, CASEY_EMAIL))
 
 @pytest.fixture
 def manager_headers(auth_client):
-    return bearer(token_for(auth_client, "morgan_manager", MANAGER))
+    return bearer(token_for(auth_client, MORGAN_EMAIL))
