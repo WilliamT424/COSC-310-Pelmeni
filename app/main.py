@@ -7,7 +7,7 @@ from app.services.menu_services import list_menus_for_restaurant, list_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from schemas.customer import Customer, CustomerCreate, CustomerUpdate
-from services.customer_services import register_new_customer, retrieve_customer, update_customer
+from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 
 app = FastAPI()
 
@@ -111,6 +111,19 @@ async def create_customer(new_customer: CustomerCreate):
 )
 async def update_customer_route(customer_id: int, updates: CustomerUpdate):
     customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@app.patch(
+    "/customers/{customer_id}",
+    response_model=Customer,
+    summary="Deactivate a customer",
+    description="Deactivates an existing customer.",
+    responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
+)
+async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate):
+    customer = deactivate_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer

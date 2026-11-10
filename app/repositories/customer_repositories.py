@@ -25,10 +25,9 @@ def write_customer_json_file(customer_id, customer_data, file_path = current_dir
         data = json.load(file)
         prev_data = [item for item in data if item["customerId"] == customer_id]
     if not prev_data:
-        new_customer_data = [customer_data]
+        new_customer_data =  data + [customer_data]
         atomic_write_json(new_customer_data, file_path)
     else:
         prev_data[0].update(customer_data)
-        with open(file_path, "w") as file:
-            json.dump(data, file)
+        atomic_write_json(data, file_path)
     return True
