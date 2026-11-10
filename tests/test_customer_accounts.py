@@ -1,12 +1,12 @@
 import pytest
-from app.schemas.customer import Address, CustomerCreate
-from app.services import customer_services
+from schemas.customer import Address, CustomerCreate, Customer
+from services import customer_services
 import json
-from app.repositories import customer_repositories
+from repositories import customer_repositories
 
 @pytest.fixture
 def sample_customer():
-    return CustomerCreate(name="Test Customer", email="test@example.com", address=Address(street="123 Test Street", city="Kelowna", province="BC", postal_code="V1Y 1A1", country="Canada"), street="123 Test Street", city="Kelowna", province="BC", postal_code="V1Y 1A1", country="Canada")
+    return CustomerCreate(name="Test Customer", email="test@example.com", street="123 Test Street", city="Kelowna", province="BC", postal_code="V1Y 1A1", country="Canada")
 
 @pytest.fixture
 def mock_customer_repository(monkeypatch):
@@ -16,13 +16,13 @@ def mock_customer_repository(monkeypatch):
         return customers
 
     def mock_read(customer_id):
-        return [c for c in customers if c["id"] == customer_id]
+        return [c for c in customers if c["customerId"] == customer_id]
 
     def mock_write(customer_id, customer_data):
         if hasattr(customer_data, "model_dump"):
             customer_data = customer_data.model_dump()
 
-        existing = next((c for c in customers if c["id"] == customer_id), None)
+        existing = next((c for c in customers if c["customerId"] == customer_id), None)
 
         if existing:
             existing.update(customer_data)
@@ -48,9 +48,9 @@ def test_register_customer(sample_customer, mock_customer_repository):
 
 def test_retrieve_customer(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
-    customer = customer_services.retrieve_customer(registered.id)
+    customer = customer_services.retrieve_customer(registered.customerId) 
 
-    assert customer.id == registered.id
+    assert customer.customerId == registered.customerId
     assert customer.name == "Test Customer"
     assert customer.email == "test@example.com"
 
@@ -64,7 +64,7 @@ def test_retrieve_nonexistent_customer(mock_customer_repository):
 def test_update_customer_information(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    updated = customer_services.update_customer(registered.id, {"name": "Updated Name", "email": "updated@example.com"})
+    updated = customer_services.update_customer(registered.customerId, {"name": "Updated Name", "email": "updated@example.com"})
 
     assert updated.name == "Updated Name"
     assert updated.email == "updated@example.com"
@@ -73,26 +73,26 @@ def test_update_customer_information(sample_customer, mock_customer_repository):
 def test_update_delivery_address(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    updated = customer_services.update_customer(registered.id, {"street": "456 New Street", "city": "Vancouver"})
+    updated = customer_services.update_customer(registered.customerId, {"street": "456 New Street", "city": "Vancouver"})
 
-    assert updated.address.street == "456 New Street"
-    assert updated.address.city == "Vancouver"
-    assert updated.address.province == "BC"
+    assert updated.deliveryAddress.street == "456 New Street"
+    assert updated.deliveryAddress.city == "Vancouver"
+    assert updated.deliveryAddress.province == "BC"
 
 
 def test_deactivate_customer(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    deactivated = customer_services.deactivate_customer(registered.id)
+    deactivated = customer_services.deactivate_customer(registered.customerId)
 
-    assert deactivated.id == registered.id
+    assert deactivated.customerId == registered.customerId
     assert deactivated.status == False
 
 
 def test_deactivate_nonexistent_customer(mock_customer_repository):
     customer = customer_services.deactivate_customer(999)
 
-    assert customer is None
+    assert customer == None
 
 def test_read_all_customers(tmp_path):
     file_path = tmp_path / "customers.json"
@@ -146,27 +146,27 @@ def test_update_existing_customer(tmp_path):
 def test_update_name_preserves_other_information(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    updated = customer_services.update_customer(registered.id, {"name": "New Name"})
+    updated = customer_services.update_customer(registered.customerId, {"name": "New Name"})
 
     assert updated.name == "New Name"
     assert updated.email == "test@example.com"
-    assert updated.address.street == "123 Test Street"
+    assert updated.deliveryAddress.street == "123 Test Street"
 
 def test_update_one_address_field(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    updated = customer_services.update_customer(registered.id, {"city": "Vancouver"})
+    updated = customer_services.update_customer(registered.customerId, {"city": "Vancouver"})
 
-    assert updated.address.city == "Vancouver"
-    assert updated.address.street == "123 Test Street"
-    assert updated.address.province == "BC"
-    assert updated.address.postal_code == "V1Y 1A1"
-    assert updated.address.country == "Canada"
+    assert updated.deliveryAddress.city == "Vancouver"
+    assert updated.deliveryAddress.street == "123 Test Street"
+    assert updated.deliveryAddress.province == "BC"
+    assert updated.deliveryAddress.postal_code == "V1Y 1A1"
+    assert updated.deliveryAddress.country == "Canada"
 
 def test_deactivation_is_saved(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
 
-    customer_services.deactivate_customer(registered.id)
+    customer_services.deactivate_customer(registered.customerId)
 
     assert mock_customer_repository[0]["status"] == False
 
@@ -181,23 +181,38 @@ def real_customer_repository(tmp_path, monkeypatch):
             "street": "123 Test Street",
             "city": "Kelowna",
             "province": "BC",
-            "postalCode": "V1Y 1A1",
+            "postal_code": "V1Y 1A1",
             "country": "Canada"
         },
         "status": True
     }]
     file_path.write_text(json.dumps(customers))
 
+    def write_customer(customer_id, customer_data):
+        if hasattr(customer_data, "model_dump"):
+            customer_data = customer_data.model_dump()
+
+        return customer_repositories.write_customer_json_file(
+            customer_id,
+            customer_data,
+            file_path
+        )
+
+    monkeypatch.setattr(
+        customer_services,
+        "write_customer_json_file",
+        write_customer
+    )
+
     monkeypatch.setattr(customer_services, "read_all_customers_json_file", lambda: customer_repositories.read_all_customers_json_file(file_path))
     monkeypatch.setattr(customer_services, "read_customer_json_file", lambda customer_id: customer_repositories.read_customer_json_file(customer_id, file_path))
-    monkeypatch.setattr(customer_services, "write_customer_json_file", lambda customer_id, data: customer_repositories.write_customer_json_file(customer_id, data, file_path))
-
     return file_path
 
 
 def test_register_customer_integration(sample_customer, real_customer_repository):
     customer = customer_services.register_new_customer(sample_customer)
     saved = json.loads(real_customer_repository.read_text())
+    assert isinstance(customer, Customer)
     assert customer.name == "Test Customer"
     assert len(saved) == 2
 
@@ -225,18 +240,19 @@ def test_deactivate_customer_integration(real_customer_repository):
 def test_register_duplicate_email(sample_customer, mock_customer_repository):
     customer_services.register_new_customer(sample_customer)
     duplicate = customer_services.register_new_customer(sample_customer)
-    assert duplicate.email == "test@example.com"
+    
     assert len(mock_customer_repository) == 1
+    assert duplicate == "Please update your existing account instead of creating a new one."
 
 def test_update_nonexistent_customer(mock_customer_repository):
     result = customer_services.update_customer(999, {"name": "New Name"})
-    assert result is None
+    assert result == None
 
 def test_update_multiple_address_fields(sample_customer, mock_customer_repository):
     registered = customer_services.register_new_customer(sample_customer)
-    updated = customer_services.update_customer(registered.id, {"street": "456 New Street", "city": "Vancouver", "province": "ON", "postal_code": "K1A 0B1", "country": "Canada"})
-    assert updated.address.street == "456 New Street"
-    assert updated.address.city == "Vancouver"
-    assert updated.address.province == "ON"
-    assert updated.address.postal_code == "K1A 0B1"
-    assert updated.address.country == "Canada"
+    updated = customer_services.update_customer(registered.customerId, {"street": "456 New Street", "city": "Vancouver", "province": "ON", "postal_code": "K1A 0B1", "country": "Canada"})
+    assert updated.deliveryAddress.street == "456 New Street"
+    assert updated.deliveryAddress.city == "Vancouver"
+    assert updated.deliveryAddress.province == "ON"
+    assert updated.deliveryAddress.postal_code == "K1A 0B1"
+    assert updated.deliveryAddress.country == "Canada"

@@ -5,7 +5,7 @@ from repositories.customer_repositories import read_all_customers_json_file, rea
 def create_customer(customerData: CustomerCreate, address: Address, status: bool = True) -> Customer:
 
     current_customers = read_all_customers_json_file()
-    customer_id = max([customer.customerId for customer in current_customers], default=0) + 1
+    customer_id = max([customer["customerId"] for customer in current_customers], default=0) + 1
 
     return Customer(
         customerId=customer_id,
@@ -26,6 +26,10 @@ def create_address(street: str, city: str, province: str, postal_code: str, coun
 
 
 def register_new_customer(customer: CustomerCreate):
+    all_customers = read_all_customers_json_file()
+    if any(c["email"] == customer.email for c in all_customers):
+        return "Please update your existing account instead of creating a new one."     
+    
     delivery_address = create_address(customer.street, customer.city, customer.province, customer.postal_code, customer.country)
     customer_data = create_customer(customer, delivery_address)
     
@@ -44,7 +48,7 @@ def update_customer(customer_id: int, update_data: dict):
 
     customer_data = read_customer_json_file(customer_id)
     if not customer_data:
-        return "Customer not found"
+        return None
 
     customer_data = customer_data[0]
 
@@ -61,7 +65,7 @@ def update_customer(customer_id: int, update_data: dict):
 def deactivate_customer(customer_id: int):
     customer_data = read_customer_json_file(customer_id)
     if not customer_data:
-        return "Customer not found"
+        return None
 
     customer_data = customer_data[0]
     customer_data["status"] = False

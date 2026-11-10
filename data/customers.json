@@ -8,7 +8,7 @@
         "street": "1450 Bernard Avenue",
         "city": "Kelowna",
         "province": "BC",
-        "postalCode": "V1Y 6R8",
+        "postal_code": "V1Y 6R8",
         "country": "Canada"
       },
       "status": true
@@ -21,7 +21,7 @@
         "street": "2100 Springfield Road",
         "city": "Kelowna",
         "province": "BC",
-        "postalCode": "V1Y 7X1",
+        "postal_code": "V1Y 7X1",
         "country": "Canada"
       },
       "status": true
@@ -34,7 +34,7 @@
         "street": "3150 Lakeshore Road",
         "city": "Kelowna",
         "province": "BC",
-        "postalCode": "V1W 3T1",
+        "postal_code": "V1W 3T1",
         "country": "Canada"
       },
       "status": false
@@ -47,7 +47,7 @@
         "street": "1890 Cooper Road",
         "city": "Kelowna",
         "province": "BC",
-        "postalCode": "V1Y 8B7",
+        "postal_code": "V1Y 8B7",
         "country": "Canada"
       },
       "status": true
@@ -60,7 +60,7 @@
         "street": "5250 Big White Road",
         "city": "Kelowna",
         "province": "BC",
-        "postalCode": "V1P 1P3",
+        "postal_code": "V1P 1P3",
         "country": "Canada"
       },
       "status": false
