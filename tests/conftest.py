@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import app.services.restaurant_services as restaurant_services
-import app.services.menu_services as menu_services
-from app.main import app
+import services.restaurant_services as restaurant_services
+import services.menu_services as menu_services
+from main import app
 
 SAMPLE_RESTAURANTS = [
     {"id": 101, "name": "Test Bistro", "rating": 4, "cuisine": "Test", "deliveryTime": 25},
