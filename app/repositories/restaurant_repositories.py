@@ -1,10 +1,35 @@
 import json
 from pathlib import Path
+from app.repositories.json_storage import atomic_write_json
+from app.schemas.restaurant import Restaurant
 
 current_dir = Path(__file__).resolve().parent.parent.parent
+RESTAURANTS_FILE = current_dir / "data" / "restaurants.json"
 
-def read_json_file(file_path = current_dir / "data" / "restaurants.json"):
-
-    with open(file_path, "r") as file:
+def read_json_file(file_path = None):
+    # Resolved at call time so tests can point RESTAURANTS_FILE at a temp copy
+    with open(file_path or RESTAURANTS_FILE, "r") as file:
         data = json.load(file)
     return data
+
+def update_json(data, file_path = None):
+    atomic_write_json(data, file_path or RESTAURANTS_FILE, indent=4)
+
+def update_restaurant(restaurant_id, updated_data):
+    restaurants = read_json_file()
+ 
+    for restaurant in restaurants:
+        if restaurant["id"] == restaurant_id:
+            restaurant.update(updated_data)
+            update_json(restaurants)
+            return restaurant
+
+    return None
+
+def add_restaurant(new_restaurant: Restaurant):
+        data = read_json_file()
+        data.append(new_restaurant.model_dump())
+        update_json(data)
+
+        return new_restaurant
+
