@@ -6,8 +6,10 @@ from app.services.restaurant_services import create_restaurant_service, list_res
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
-from schemas.customer import Customer, CustomerCreate, CustomerUpdate
-from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
+from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
+from app.services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
+from app.schemas.cart import Cart, CartItemCreate, CartItemUpdate
+from app.services.cart_services import create_cart, get_customer_cart, add_item_to_cart, update_cart_item, remove_cart_item, clear_cart
 
 app = FastAPI()
 
@@ -127,6 +129,93 @@ async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate):
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
+
+@app.post(
+    "/customers/{customer_id}/cart",
+    response_model=Cart,
+    status_code=201,
+    summary="Create or retrieve a customer's cart",
+    description="Creates an empty cart for the customer and restaurant, or returns the existing cart.",
+    responses={404: {"description": "Customer not found or inactive"}},
+)
+async def create_customer_cart(customer_id: int, restaurant_id: int):
+    cart = create_cart(customer_id, restaurant_id)
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Customer not found or inactive")
+    return cart
+
+@app.get(
+    "/customers/{customer_id}/cart",
+    response_model=Cart,
+    summary="Retrieve a customer's cart",
+    description="Returns the customer's cart for the specified restaurant, including calculated totals.",
+    responses={404: {"description": "Customer not found or inactive"}},
+)
+async def get_customer_cart_route(customer_id: int, restaurant_id: int):
+    cart = get_customer_cart(customer_id, restaurant_id)
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Customer not found or inactive")
+    return cart
+
+@app.post(
+    "/customers/{customer_id}/cart/items",
+    response_model=Cart,
+    summary="Add an item to a customer's cart",
+    description="Adds an available menu item to the customer's cart. The item price is taken from the menu.",
+    responses={404: {"description": "Customer or available menu item not found"}, 422: {"description": "Invalid quantity or item data"}},
+)
+async def add_item_to_customer_cart(customer_id: int, item: CartItemCreate):
+    cart = add_item_to_cart(
+        customer_id,
+        item.restaurant_id,
+        item.menu_id,
+        item.menu_item_id,
+        item.quantity
+    )
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Customer or available menu item not found")
+    return cart
+
+@app.patch(
+    "/customers/{customer_id}/cart/items/{menu_item_id}",
+    response_model=Cart,
+    summary="Update cart item quantity",
+    description="Updates the quantity of an item in the customer's cart.",
+    responses={404: {"description": "Cart or item not found"}, 422: {"description": "Invalid quantity"}},
+)
+async def update_customer_cart_item(customer_id: int, menu_item_id: int, restaurant_id: int, menu_id: int, updates: CartItemUpdate):
+    cart = update_cart_item(customer_id, restaurant_id, menu_id, menu_item_id, updates.quantity)
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Cart or item not found")
+    return cart
+
+@app.delete(
+    "/customers/{customer_id}/cart/items/{menu_item_id}",
+    response_model=Cart,
+    summary="Remove an item from a customer's cart",
+    description="Removes the specified menu item from the customer's cart.",
+    responses={404: {"description": "Cart or item not found"}},
+)
+async def remove_customer_cart_item(customer_id: int, menu_item_id: int, restaurant_id: int, menu_id: int):
+    cart = remove_cart_item(customer_id, restaurant_id, menu_id, menu_item_id)
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Cart or item not found")
+    return cart
+
+@app.delete(
+    "/customers/{customer_id}/cart",
+    response_model=Cart,
+    summary="Clear a customer's cart",
+    description="Removes all items from the customer's cart while keeping the cart.",
+    responses={404: {"description": "Cart not found or customer inactive"}},
+)
+async def clear_customer_cart(customer_id: int, restaurant_id: int):
+    cart = clear_cart(customer_id, restaurant_id)
+    if cart is None:
+        raise HTTPException(status_code=404, detail="Cart not found or customer inactive")
+    return cart
+
+
 
 @app.post(
     "/restaurants",

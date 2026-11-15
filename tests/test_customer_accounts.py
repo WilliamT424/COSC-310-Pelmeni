@@ -1,8 +1,8 @@
 import pytest
-from schemas.customer import Address, CustomerCreate, Customer
-from services import customer_services
 import json
-from repositories import customer_repositories
+from app.schemas.customer import Address, CustomerCreate, Customer
+from app.services import customer_services
+from app.repositories import customer_repositories
 
 @pytest.fixture
 def sample_customer():
