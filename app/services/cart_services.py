@@ -2,7 +2,7 @@ from app.repositories.cart_repository import read_carts_file, write_carts_file, 
 from app.services.menu_services import get_menu_item
 from app.services.customer_services import retrieve_customer
 
-def create_cart(customer_id: int, restaurant_id: int):
+def create_cart(customer_id: int, restaurant_id: int | None = None):
     customer = retrieve_customer(customer_id)
 
     if customer is None or not customer.status:
@@ -84,7 +84,10 @@ def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id
 
     write_carts_file(carts)
 
-    return cart
+    return {
+    **cart,
+    **calculate_cart_totals(cart)
+    }
 
 def update_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id: int, quantity: int):
     customer = retrieve_customer(customer_id)

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class CartItemCreate(BaseModel):
-    restaurant_id: int
+    restaurant_id: int | None = None
     menu_id: int
     menu_item_id: int
     quantity: int = Field(gt=0)

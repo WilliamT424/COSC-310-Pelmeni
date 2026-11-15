@@ -138,7 +138,7 @@ async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate):
     description="Creates an empty cart for the customer and restaurant, or returns the existing cart.",
     responses={404: {"description": "Customer not found or inactive"}},
 )
-async def create_customer_cart(customer_id: int, restaurant_id: int):
+async def create_customer_cart(customer_id: int, restaurant_id: int | None = None):
     cart = create_cart(customer_id, restaurant_id)
     if cart is None:
         raise HTTPException(status_code=404, detail="Customer not found or inactive")
