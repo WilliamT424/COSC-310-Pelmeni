@@ -1,5 +1,5 @@
-from app.repositories.restaurant_repositories import add_restaurant, read_json_file, update_restaurant
-from app.schemas.restaurant import Restaurant, RestaurantCreate
+from repositories.restaurant_repositories import add_restaurant, read_json_file, update_restaurant
+from schemas.restaurant import Restaurant, RestaurantCreate
 
 
 def list_restaurants() -> list[dict]:

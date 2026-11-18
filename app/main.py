@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Annotated, Optional
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, status, HTTPException, Query
-from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
-from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
-from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
-from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
+from fastapi import FastAPI, status, HTTPException, Query, Path as APIPath
+from services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
+from services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
+from schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
+from schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from schemas.customer import Customer, CustomerCreate, CustomerUpdate
 from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 
@@ -82,10 +82,12 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
     "/customers/{customer_id}",
     response_model=Customer,
     summary="Get a customer",
-    description="Returns a single customer by their ID.",
+    description="Returns a customer profile, including their delivery address and account status. The customer ID is assigned by the server.",
     responses={404: {"description": "Customer not found"}},
 )
-async def get_customer(customer_id: int):
+async def get_customer(
+    customer_id: Annotated[int, APIPath(description="Server-assigned customer ID.")],
+):
     customer = retrieve_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -96,33 +98,41 @@ async def get_customer(customer_id: int):
     status_code=201,
     response_model=Customer,
     summary="Create a customer",
-    description="Creates a customer and persists it. The id is assigned by the server.",
-    responses={422: {"description": "Invalid customer data"}},
+    description="Creates and persists a customer account. The customer ID is assigned by the server and email addresses must be unique.",
+    responses={409: {"description": "An account with this email already exists"}, 422: {"description": "Invalid or incomplete customer data"}},
 )
 async def create_customer(new_customer: CustomerCreate):
-    return register_new_customer(new_customer)
-
-@app.patch(
-    "/customers/{customer_id}",
-    response_model=Customer,
-    summary="Update a customer",
-    description="Updates only the provided fields of an existing customer.",
-    responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
-)
-async def update_customer_route(customer_id: int, updates: CustomerUpdate):
-    customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
-    if customer is None:
-        raise HTTPException(status_code=404, detail="Customer not found")
+    customer = register_new_customer(new_customer)
+    if isinstance(customer, str):
+        raise HTTPException(status_code=409, detail=customer)
     return customer
 
 @app.patch(
     "/customers/{customer_id}",
     response_model=Customer,
-    summary="Deactivate a customer",
-    description="Deactivates an existing customer.",
+    summary="Update a customer",
+    description="Updates only the provided profile or delivery-address fields of an existing customer. Omitted fields keep their current values.",
     responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
 )
-async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate):
+async def update_customer_route(
+    customer_id: Annotated[int, APIPath(description="ID of the customer to update.")],
+    updates: CustomerUpdate,
+):
+    customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@app.post(
+    "/customers/{customer_id}/deactivate",
+    response_model=Customer,
+    summary="Deactivate a customer",
+    description="Marks an existing customer account inactive without deleting its record.",
+    responses={404: {"description": "Customer not found"}},
+)
+async def deactivate_customer_route(
+    customer_id: Annotated[int, APIPath(description="ID of the customer to deactivate.")],
+):
     customer = deactivate_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")

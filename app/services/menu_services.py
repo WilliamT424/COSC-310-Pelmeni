@@ -1,5 +1,5 @@
-from app.repositories.menu_repositories import read_menus_file, write_menus_file
-from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
+from repositories.menu_repositories import read_menus_file, write_menus_file
+from schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 
 
 def list_menus_for_restaurant(restaurant_id: int) -> list[dict]:

@@ -21,6 +21,9 @@ def read_customer_json_file(customer_id, file_path = current_dir / "data" / "cus
 
 
 def write_customer_json_file(customer_id, customer_data, file_path = current_dir / "data" / "customers.json"):
+    if hasattr(customer_data, "model_dump"):
+        customer_data = customer_data.model_dump()
+
     with open(file_path, "r") as file:
         data = json.load(file)
         prev_data = [item for item in data if item["customerId"] == customer_id]
