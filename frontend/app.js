@@ -1,4 +1,16 @@
 const view = document.getElementById("view");
+const customerLink = document.getElementById("customer-link");
+
+function setCustomerLink(customerId) {
+  if (!customerLink) return;
+  localStorage.setItem("pelmeniCustomerId", String(customerId));
+  customerLink.href = `#/customers/${customerId}`;
+}
+
+const savedCustomerId = localStorage.getItem("pelmeniCustomerId");
+if (savedCustomerId && /^\d+$/.test(savedCustomerId)) {
+  setCustomerLink(savedCustomerId);
+}
 
 // Small helpers -------------------------------------------------------------
 function el(tag, props = {}, ...children) {
@@ -195,12 +207,147 @@ async function formView(id) {
   });
 }
 
+// Customer registration and account management ------------------------------
+function customerRegistrationForm() {
+  const message = el("p", { className: "error" });
+  const form = el("form", { className: "edit" },
+    field("Name", "name", "text", "", { required: true }),
+    field("Email", "email", "email", "", { required: true }),
+    field("Street", "street", "text", "", { required: true }),
+    field("City", "city", "text", "", { required: true }),
+    field("Province", "province", "text", "", { required: true }),
+    field("Postal code", "postal_code", "text", "", { required: true }),
+    field("Country", "country", "text", "", { required: true }),
+    el("button", { type: "submit" }, "Create account"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const saved = await api("/customers", jsonRequest("POST", Object.fromEntries(new FormData(form))));
+      setCustomerLink(saved.customerId);
+      location.hash = `#/customers/${saved.customerId}`;
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
+}
+
+function editableCustomerField(customerId, label, key, value, type = "text") {
+  const display = el("span", { className: "account-value" }, value || "—");
+  const editButton = el("button", {
+    type: "button",
+    className: "edit-icon",
+    title: `Edit ${label.toLowerCase()}`,
+    "aria-label": `Edit ${label.toLowerCase()}`,
+  }, "✎");
+  const input = el("input", {
+    name: key, type, value: value ?? "", required: true,
+    "aria-label": label,
+  });
+  const message = el("span", { className: "error", role: "alert" });
+  const cancelButton = el("button", { type: "button", className: "secondary" }, "Cancel");
+  const editor = el("form", { className: "inline-editor", hidden: true },
+    input,
+    el("button", { type: "submit" }, "Save"),
+    cancelButton,
+    message,
+  );
+
+  editButton.addEventListener("click", () => {
+    display.hidden = true;
+    editButton.hidden = true;
+    editor.hidden = false;
+    input.focus();
+  });
+  cancelButton.addEventListener("click", () => {
+    input.value = value ?? "";
+    message.textContent = "";
+    editor.hidden = true;
+    display.hidden = false;
+    editButton.hidden = false;
+  });
+  editor.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await api(`/customers/${customerId}`, jsonRequest("PATCH", { [key]: input.value }));
+      await showCustomer(customerId);
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+
+  return el("div", { className: "account-field" },
+    el("span", { className: "account-label" }, `${label}:`), display, editButton, editor,
+  );
+}
+
+async function customerView(id = null) {
+  view.replaceChildren(el("h2", {}, "Customer accounts"));
+  if (id) {
+    await showCustomer(id);
+    return;
+  }
+
+  view.append(
+    el("h3", {}, "Create an account"), customerRegistrationForm(),
+  );
+}
+
+async function showCustomer(id) {
+  const customer = await api(`/customers/${id}`);
+  const address = customer.deliveryAddress;
+  const profile = el("section", { className: "account-details" },
+    editableCustomerField(id, "Name", "name", customer.name),
+    editableCustomerField(id, "Email", "email", customer.email, "email"),
+    el("h4", {}, "Delivery address"),
+    editableCustomerField(id, "Street", "street", address.street),
+    editableCustomerField(id, "City", "city", address.city),
+    editableCustomerField(id, "Province", "province", address.province),
+    editableCustomerField(id, "Postal code", "postal_code", address.postal_code),
+    editableCustomerField(id, "Country", "country", address.country),
+  );
+  const statusText = el("p", { className: customer.status ? "ok" : "muted" },
+    customer.status ? "Account active" : "Account deactivated");
+  const actions = [];
+  if (customer.status) {
+    const deactivateButton = el("button", { type: "button" }, "Deactivate account");
+    deactivateButton.addEventListener("click", async () => {
+      try {
+        await api(`/customers/${id}/deactivate`, { method: "POST" });
+        await showCustomer(id);
+      } catch (err) {
+        statusText.className = "error";
+        statusText.textContent = err.message;
+      }
+    });
+    actions.push(deactivateButton);
+  }
+  const logoutButton = el("button", { type: "button" }, "Log out");
+  logoutButton.addEventListener("click", () => {
+    localStorage.removeItem("pelmeniCustomerId");
+    customerLink.href = "#/customers";
+    location.hash = "#/customers";
+  });
+  actions.push(logoutButton);
+  view.replaceChildren(
+    el("h2", {}, `Customer account #${customer.customerId}`),
+    statusText,
+    el("h3", {}, "Profile"),
+    profile,
+    el("div", { className: "customer-actions" }, ...actions),
+  );
+}
+
 // Router --------------------------------------------------------------------
 async function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   try {
     if (parts.length === 0) await listView();
     else if (parts[0] === "new") await formView(null);
+    else if (parts[0] === "customers" && parts[1]) await customerView(parts[1]);
+    else if (parts[0] === "customers") await customerView();
     else if (parts[0] === "restaurant" && parts[2] === "edit") await formView(parts[1]);
     else if (parts[0] === "restaurant") await detailView(parts[1]);
     else view.replaceChildren(el("p", {}, "Page not found."));

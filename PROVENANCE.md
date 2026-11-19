@@ -26,11 +26,11 @@ Validation: Ran the tests and checked the expected status codes, returned restau
 PR or commit: PR #26
 
 Student(s): Gurnoor Chawla 
-Artifact: tests/test_customer_accounts.py, app/services/customer_services.py, app/repositories/json_storage.py
+Artifact: tests/test_customer_accounts.py, app/services/customer_services.py, app/repositories/customer_repositories.py, app/repositories/json_storage.py, app/main.py, frontend/index.html, frontend/app.js, frontend/style.css, README.md
 Provenance label: AI-ASSISTED
 AI tool: ChatGPT
-Purpose: Get help diagnosing customer-account test failures, pytest fixture behavior, Pylance diagnostics, and JSON serialization issues.
-Influence: Used AI suggestions to clarify fixture isolation, Pydantic model handling, return-type narrowing, nested address assertions, and repository test setup.
-Validation: Reviewed the relevant tests and source files and traced the integration-test execution path.
+Purpose: Get help diagnosing customer-account test failures, pytest fixture behavior, Pylance diagnostics, JSON serialization issues, adding customer account features to the frontend, and documenting the customer account API.
+Influence: Used AI suggestions to clarify fixture isolation, Pydantic model handling, return-type narrowing, nested address assertions, repository test setup, customer registration and deactivation flows, inline readable profile fields with edit controls, and customer API models, parameters, responses, and errors in the README.
+Validation: Compared the customer API documentation with the route handlers, schemas, and customer service/repository tests. Tests were not run.
 
 
