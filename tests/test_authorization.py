@@ -3,7 +3,7 @@ import json
 import pytest
 
 from auth_support import (
-    CASEY_EMAIL, CASEY_ID, CUSTOMER_PATH, MANAGER, MORGAN_ID, NEW_RESTAURANT, PROTECTED_OPERATIONS,
+    CASEY_EMAIL, CASEY_ID, CUSTOMER_PATH, MISSING_ID, MORGAN_ID, NEW_RESTAURANT, PROTECTED_OPERATIONS,
     PUBLIC_AUTH_PATHS, PUBLIC_READ_PATHS, bearer, not_implemented, send, tamper, token_for,
 )
 
@@ -17,7 +17,7 @@ operations = pytest.mark.parametrize(
 
 OWN_ACCOUNT = CUSTOMER_PATH.format(customer_id=CASEY_ID)
 OTHER_ACCOUNT = CUSTOMER_PATH.format(customer_id=MORGAN_ID)
-MISSING_ACCOUNT = CUSTOMER_PATH.format(customer_id="CUST-0000")
+MISSING_ACCOUNT = CUSTOMER_PATH.format(customer_id=MISSING_ID)
 ACCOUNT_REQUESTS = pytest.mark.parametrize("method, body", [("GET", None), ("PATCH", {"name": "Hijacked"})])
 
 @ACCOUNT_REQUESTS
@@ -51,7 +51,7 @@ def test_forbidden_account_update_does_not_modify_data(auth_client, customer_hea
     assert json.loads(isolated_users.read_text()) == json.loads(before)
 
 def test_account_ignores_spoofed_identity_headers(auth_client, customer_headers):
-    spoofed = {**customer_headers, "X-User": MORGAN_ID, "X-Customer-Id": MORGAN_ID}
+    spoofed = {**customer_headers, "X-User": str(MORGAN_ID), "X-Customer-Id": str(MORGAN_ID)}
     assert send(auth_client, "GET", OTHER_ACCOUNT, None, spoofed).status_code == 403
 
 @operations
@@ -97,8 +97,9 @@ def _write_route_params():
 @pytest.mark.parametrize("method, path", list(_write_route_params()))
 def test_every_write_route_requires_authentication(auth_client, method, path):
     concrete_path = (path.replace("{restaurant_id}", "101").replace("{menu_id}", "1")
-                     .replace("{item_id}", "1").replace("{customer_id}", CASEY_ID))
+                     .replace("{item_id}", "1").replace("{customer_id}", str(CASEY_ID)))
     assert send(auth_client, method, concrete_path, {}).status_code == 401, f"{method} {path} is not protected"
 
 def test_write_route_discovery_finds_all_known_operations():
-    assert KNOWN_UNPROTECTED | {("PATCH", "/customers/{customer_id}")} <= set(_write_routes())
+    customer_routes = {("PATCH", "/customers/{customer_id}"), ("PATCH", "/customers/{customer_id}/deactivate")}
+    assert KNOWN_UNPROTECTED | customer_routes <= set(_write_routes())

@@ -52,26 +52,21 @@ from auth_support import CASEY_EMAIL, MORGAN_EMAIL, bearer, sample_customers, to
 
 @pytest.fixture
 def isolated_users(tmp_path, monkeypatch):
-    import functools
+    import importlib
     import json
-    import app.services.auth_services as auth_services
-    import app.services.customer_services as customer_services
-    import app.dependencies.dependencies as dependencies
 
     customers_file = tmp_path / "customers.json"
     customers_file.write_text(json.dumps(sample_customers()))
-    for module, names in (
-        (auth_services, ["read_all_customers_json_file"]),
-        (dependencies, ["read_customer_json_file"]),
-        (customer_services, ["read_all_customers_json_file", "read_customer_json_file", "write_customer_json_file"]),
-    ):
-        for name in names:
-            monkeypatch.setattr(module, name, functools.partial(getattr(module, name), file_path=customers_file))
+    for module_name in ("app.repositories.customer_repositories", "repositories.customer_repositories"):
+        module = importlib.import_module(module_name)
+        for name in ("read_all_customers_json_file", "read_customer_json_file", "write_customer_json_file"):
+            monkeypatch.setattr(getattr(module, name), "__defaults__", (customers_file,))
     yield customers_file
 
 @pytest.fixture
 def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolated_users):
     import json
+    from app.main import app as fastapi_app
     import app.repositories.restaurant_repositories as restaurant_repositories
     import app.repositories.menu_repositories as menu_repositories
 
@@ -80,7 +75,7 @@ def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolate
     menus_file.write_text(json.dumps(sample_menus))
     monkeypatch.setattr(restaurant_repositories, "RESTAURANTS_FILE", restaurants_file)
     monkeypatch.setattr(menu_repositories, "MENUS_FILE", menus_file)
-    with TestClient(app) as test_client:
+    with TestClient(fastapi_app) as test_client:
         yield test_client
 
 @pytest.fixture

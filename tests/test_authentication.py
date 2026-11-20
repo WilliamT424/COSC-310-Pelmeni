@@ -4,16 +4,15 @@ import jwt
 import pytest
 
 from auth_support import (
-    CASEY_EMAIL, CASEY_ID, CUSTOMER, DEFAULT_ROLE, INACTIVE_EMAIL, LOGIN_PATH, MANAGER, MORGAN_EMAIL,
-    MORGAN_ID, ME_PATH, NO_PASSWORD_EMAIL, PASSWORD, REGISTER_PATH, bearer, login, not_implemented,
-    register, tamper, token_for,
+    CASEY_EMAIL, CASEY_ID, INACTIVE_EMAIL, LOGIN_PATH, MANAGER, MISSING_ID, MORGAN_EMAIL,
+    MORGAN_ID, ME_PATH, NO_PASSWORD_EMAIL, PASSWORD, bearer, login, tamper, token_for,
 )
 
 pytestmark = pytest.mark.usefixtures("isolated_users")
 
 def make_token(secret=None, **claims):
     from app.services.auth_services import SECRET_KEY
-    payload = {"sub": CASEY_ID, "exp": datetime.now(timezone.utc) + timedelta(minutes=5), **claims}
+    payload = {"sub": str(CASEY_ID), "exp": datetime.now(timezone.utc) + timedelta(minutes=5), **claims}
     payload = {key: value for key, value in payload.items() if value is not None}
     return jwt.encode(payload, secret or SECRET_KEY, algorithm="HS256")
 
@@ -27,7 +26,7 @@ def test_login_with_valid_credentials_returns_token(auth_client):
 def test_login_token_identifies_customer_and_expires(auth_client):
     from app.services.auth_services import decode_access_token
     claims = decode_access_token(token_for(auth_client, CASEY_EMAIL))
-    assert claims["sub"] == CASEY_ID
+    assert claims["sub"] == str(CASEY_ID)
     assert datetime.fromtimestamp(claims["exp"], timezone.utc) > datetime.now(timezone.utc)
 
 def test_login_response_does_not_leak_password(auth_client):
@@ -106,21 +105,21 @@ def test_me_with_expired_token_returns_401(auth_client):
 def test_me_with_incomplete_token_returns_401(auth_client, claims):
     assert auth_client.get(ME_PATH, headers=bearer(make_token(**claims))).status_code == 401
 
-def test_me_with_token_for_unknown_customer_returns_401(auth_client):
-    unknown = make_token(sub="CUST-0000")
-    assert auth_client.get(ME_PATH, headers=bearer(unknown)).status_code == 401
+@pytest.mark.parametrize("sub", [str(MISSING_ID), "CUST-0000", "-1"])
+def test_me_with_token_for_unknown_customer_returns_401(auth_client, sub):
+    assert auth_client.get(ME_PATH, headers=bearer(make_token(sub=sub))).status_code == 401
 
 def test_me_with_token_of_deactivated_account_returns_401(auth_client, isolated_users):
     import json
     token = token_for(auth_client, CASEY_EMAIL)
     customers = json.loads(isolated_users.read_text())
-    next(c for c in customers if c["customerId"] == CASEY_ID)["status"] = "inactive"
+    next(c for c in customers if c["customerId"] == CASEY_ID)["status"] = False
     isolated_users.write_text(json.dumps(customers))
     assert auth_client.get(ME_PATH, headers=bearer(token)).status_code == 401
 
 def test_me_ignores_spoofed_identity_headers(auth_client):
     token = token_for(auth_client, CASEY_EMAIL)
-    spoofed = {**bearer(token), "X-User": MORGAN_ID, "X-Customer-Id": MORGAN_ID, "X-Role": MANAGER, "Role": MANAGER}
+    spoofed = {**bearer(token), "X-User": str(MORGAN_ID), "X-Customer-Id": str(MORGAN_ID), "X-Role": MANAGER, "Role": MANAGER}
     body = auth_client.get(ME_PATH, headers=spoofed).json()
     assert body["customerId"] == CASEY_ID
     assert body["email"] == CASEY_EMAIL

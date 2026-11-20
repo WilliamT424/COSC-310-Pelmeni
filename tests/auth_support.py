@@ -2,7 +2,7 @@ import functools
 
 import pytest
 
-from app.services.auth_services import hash_password
+from app.services.passwords import hash_password
 
 LOGIN_PATH = "/auth/login"
 ME_PATH = "/auth/me"
@@ -21,26 +21,28 @@ not_implemented = pytest.mark.xfail(
     reason="planned feature, not implemented in the backend yet", strict=True,
 )
 
-CASEY_ID, CASEY_EMAIL = "CUST-9001", "casey.customer@example.com"
-MORGAN_ID, MORGAN_EMAIL = "CUST-9002", "morgan.manager@example.com"
-INACTIVE_ID, INACTIVE_EMAIL = "CUST-9003", "ian.inactive@example.com"
-NO_PASSWORD_ID, NO_PASSWORD_EMAIL = "CUST-9004", "nora.nopassword@example.com"
+#customerId is an int in the stored data; the JWT "sub" claim is its string form (str(customerId))
+CASEY_ID, CASEY_EMAIL = 9001, "casey.customer@example.com"
+MORGAN_ID, MORGAN_EMAIL = 9002, "morgan.manager@example.com"
+INACTIVE_ID, INACTIVE_EMAIL = 9003, "ian.inactive@example.com"
+NO_PASSWORD_ID, NO_PASSWORD_EMAIL = 9004, "nora.nopassword@example.com"
+MISSING_ID = 999999
 
 @functools.cache
 def _hashed_password():
     return hash_password(PASSWORD)
 
-def _customer(customer_id, name, email, status="active", role=CUSTOMER, with_password=True):
+def _customer(customer_id, name, email, active=True, with_password=True):
+    #Same shape as data/customers.json (the backend has no role field yet)
     customer = {
         "customerId": customer_id,
         "name": name,
         "email": email,
         "deliveryAddress": {
             "street": "1 Test Street", "city": "Kelowna", "province": "BC",
-            "postalCode": "V1V 1V1", "country": "Canada",
+            "postal_code": "V1V 1V1", "country": "Canada",
         },
-        "status": status,
-        "role": role,
+        "status": active,
     }
     if with_password:
         customer["hashed_password"] = _hashed_password()
@@ -49,8 +51,8 @@ def _customer(customer_id, name, email, status="active", role=CUSTOMER, with_pas
 def sample_customers():
     return [
         _customer(CASEY_ID, "Casey Customer", CASEY_EMAIL),
-        _customer(MORGAN_ID, "Morgan Manager", MORGAN_EMAIL, role=MANAGER),
-        _customer(INACTIVE_ID, "Ian Inactive", INACTIVE_EMAIL, status="inactive"),
+        _customer(MORGAN_ID, "Morgan Manager", MORGAN_EMAIL),
+        _customer(INACTIVE_ID, "Ian Inactive", INACTIVE_EMAIL, active=False),
         _customer(NO_PASSWORD_ID, "Nora NoPassword", NO_PASSWORD_EMAIL, with_password=False),
     ]
 
