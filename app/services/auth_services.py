@@ -4,7 +4,7 @@ import os
 from app.repositories.customer_repositories import read_all_customers_json_file
 from datetime import datetime, timedelta, timezone
 
-from services.passwords import verify_password
+from app.services.passwords import verify_password
 
 
 def get_customer_by_email (email: str):
@@ -37,12 +37,12 @@ def authenticate_user(email: str, password: str):
 
 SECRET_KEY = os.environ["JWT_SECRET_KEY"]
 
-def create_access_token(user_id: int) -> int: 
+def create_access_token(user_id: int) -> str:
 
     expiration = datetime.now(timezone.utc) + timedelta(minutes=30)
 
     token_data = {
-        "sub": user_id,
+        "sub": str(user_id),
         "exp": expiration
     }
 

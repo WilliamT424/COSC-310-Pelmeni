@@ -6,7 +6,7 @@ from app.services.restaurant_services import create_restaurant_service, list_res
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
-from schemas.customer import Customer, CustomerCreate, CustomerUpdate
+from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
 from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 from app.services.auth_services import authenticate_user, create_access_token
 from fastapi import Depends
@@ -126,7 +126,7 @@ async def update_customer_route(customer_id: int, updates: CustomerUpdate,custom
     description="Deactivates an existing customer.",
     responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
 )
-async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate,customer=Depends(require_customer_ownership)):
+async def deactivate_customer_route(customer_id: int ,customer=Depends(require_customer_ownership)):
     customer = deactivate_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -140,8 +140,8 @@ async def deactivate_customer_route(customer_id: int, updates: CustomerUpdate,cu
     description="Creates a restaurant and persists it. The id is assigned by the server.",
     responses={422: {"description": "Invalid restaurant data (missing field, rating outside 0-5, negative delivery time, empty name or cuisine)"}},
 )
-async def create_restaurant(new_restaurant: RestaurantCreate):
-    return create_restaurant_service(new_restaurant)
+async def create_restaurant(new_restaurant: RestaurantCreate):#roles needed, discuss with Gurnoor
+   return create_restaurant_service(new_restaurant)
 
 @app.patch(
     "/restaurants/{restaurant_id}",
