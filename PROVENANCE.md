@@ -25,4 +25,12 @@ Influence: Used AI suggestions to help structure the tests, add test cases, and 
 Validation: Ran the tests and checked the expected status codes, returned restaurant and menu data, item availability, handling of nonexistent restaurants and menus, and rejection of unsupported HTTP methods.
 PR or commit: PR #26
 
+Student(s): Gurnoor Chawla 
+Artifact: tests/test_customer_accounts.py, app/services/customer_services.py, app/repositories/json_storage.py, tests/test_cart.py, tests/test_orders.py
+Provenance label: AI-ASSISTED
+AI tool: ChatGPT
+Purpose: Get help diagnosing customer-account test failures, pytest fixture behavior, Pylance diagnostics, JSON serialization issues, and drafting cart and order API contract tests.
+Influence: Used AI suggestions to clarify fixture isolation, Pydantic model handling, return-type narrowing, nested address assertions, repository test setup, cart test cases, and order retrieval and historical snapshot test cases. The cart and order tests use isolated sample restaurant, menu, and customer data.
+Validation: Reviewed the relevant tests and source files and traced the integration-test execution path. Test collection could not be run because pytest was unavailable and Python could not be launched in the environment.
+
 

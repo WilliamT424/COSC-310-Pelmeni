@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
 
-from app.repositories.cart_repositories import close_cart, get_active_cart
+from app.repositories.cart_repository import get_cart
 from app.repositories.order_repositories import read_orders_file, write_orders_file
-from app.schemas.order import Order, OrderItem
-from app.services.customer_stub import customer_exists
+from app.schemas.order import Order
+from app.services.cart_services import calculate_cart_totals, clear_cart
+from app.services.customer_services import retrieve_customer
 from app.services.menu_services import list_menu_items
 from app.services.restaurant_services import get_restaurant
 
@@ -16,10 +16,10 @@ class CheckoutError(Exception):
 
 
 class CustomerNotFound(CheckoutError):
-    pass
+    """The customer doesn't exist or is inactive."""
 
 
-class ActiveCartNotFound(CheckoutError):
+class CartNotFound(CheckoutError):
     pass
 
 
@@ -27,22 +27,15 @@ class InvalidCart(CheckoutError):
     """The cart breaks a business rule (empty, bad quantity, missing restaurant or item, unavailable item)."""
 
 
-def _cents(value) -> Decimal:
-    return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+def _reprice_items(cart: dict) -> list[dict]:
+    """Validate every cart line against current menu data and rebuild it with the current name and price.
 
-
-def _price_cart(cart: dict) -> tuple[dict, list[OrderItem]]:
-    """Validate the cart against current restaurant and menu data and price every line from it.
-
-    Returns (restaurant, order items). Prices in the cart are never trusted.
+    Prices stored in the cart are never trusted.
     """
-    restaurant = get_restaurant(cart["restaurant_id"])
-    if restaurant is None:
-        raise InvalidCart(f"Restaurant {cart['restaurant_id']} no longer exists")
     if not cart["items"]:
         raise InvalidCart("Cart is empty")
 
-    order_items = []
+    items = []
     for line in cart["items"]:
         quantity = line["quantity"]
         if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity < 1:
@@ -53,49 +46,53 @@ def _price_cart(cart: dict) -> tuple[dict, list[OrderItem]]:
             raise InvalidCart(f"Menu item {line['menu_item_id']} not found on this restaurant's menu")
         if not item["available"]:
             raise InvalidCart(f"Menu item '{item['name']}' is not available")
-        unit_price = _cents(item["price"])
-        order_items.append(OrderItem(
-            menu_id=line["menu_id"],
-            menu_item_id=item["id"],
-            name=item["name"],
-            unit_price=float(unit_price),
-            quantity=quantity,
-            line_total=float(unit_price * quantity),
-        ))
-    return restaurant, order_items
+        items.append({
+            "menu_item_id": item["id"],
+            "menu_id": line["menu_id"],
+            "name": item["name"],
+            "price": item["price"],
+            "quantity": quantity,
+        })
+    return items
 
 
-def checkout(customer_id: int) -> dict:
-    """Turn the customer's active cart into a saved order.
+def checkout(customer_id: int, restaurant_id: int) -> dict:
+    """Turn the customer's cart for a restaurant into a saved order.
 
-    Order of operations matters: validate, price, save the order, and only then close the cart.
+    Order of operations matters: validate, reprice, save the order, and only then clear the cart.
     If anything fails before the order is saved the cart is left untouched.
     Raises a CheckoutError subclass when the checkout is refused.
     """
-    if not customer_exists(customer_id):
-        raise CustomerNotFound(f"Customer {customer_id} not found")
-    cart = get_active_cart(customer_id)
-    if cart is None:
-        raise ActiveCartNotFound(f"Customer {customer_id} has no active cart")
+    customer = retrieve_customer(customer_id)
+    if customer is None or not customer.status:
+        raise CustomerNotFound(f"Customer {customer_id} not found or inactive")
 
-    restaurant, order_items = _price_cart(cart)
-    subtotal = sum((_cents(i.line_total) for i in order_items), Decimal("0.00"))
-    total = subtotal  # no taxes, fees or discounts are defined yet; this is the single place to add them
+    cart = get_cart(customer_id, restaurant_id)
+    if cart is None:
+        raise CartNotFound(f"Customer {customer_id} has no cart for restaurant {restaurant_id}")
+
+    restaurant = get_restaurant(restaurant_id)
+    if restaurant is None:
+        raise InvalidCart(f"Restaurant {restaurant_id} no longer exists")
+
+    items = _reprice_items(cart)
+    totals = calculate_cart_totals({"items": items})  # same calculation the cart uses, on current prices
 
     orders = read_orders_file()
     order = Order(
-        id=max((o["id"] for o in orders), default=0) + 1,
-        customer_id=customer_id,
+        orderId=max((o["orderId"] for o in orders), default=0) + 1,
+        customerId=customer.customerId,
         restaurant_id=restaurant["id"],
         restaurant_name=restaurant["name"],
-        items=order_items,
-        subtotal=float(subtotal),
-        total=float(total),
+        deliveryAddress=customer.deliveryAddress,
+        items=items,
+        subtotal=totals["subtotal"],
+        total=totals["total"],
         status=ORDER_STATUS_PENDING,
         created_at=datetime.now(timezone.utc).isoformat(),
     ).model_dump()
     orders.append(order)
     write_orders_file(orders)
 
-    close_cart(cart["id"])  # only after the order is safely persisted
+    clear_cart(customer_id, restaurant_id)  # only after the order is safely persisted
     return order
