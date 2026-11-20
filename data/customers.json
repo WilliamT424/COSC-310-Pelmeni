@@ -4,6 +4,7 @@
       "customerId": 1,
       "name": "Emily Johnson",
       "email": "emily.johnson@gmail.com",
+      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$P1izOGAaw6JA+v47inysMg$phaNxO4zWpHgJxOJwGkqyYB+xfdLY8wxc78yyZhI30M",
       "deliveryAddress": {
         "street": "1450 Bernard Avenue",
         "city": "Kelowna",
@@ -17,6 +18,7 @@
       "customerId": 2,
       "name": "Michael Chen",
       "email": "michael.chen@gmail.com",
+      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$s/cIAUoGGTeQTSdmcP48wA$Ft7I7LL4xlu0RN3cigcFij6ygHBaXCBWpO0B9RrEm68",
       "deliveryAddress": {
         "street": "2100 Springfield Road",
         "city": "Kelowna",
@@ -30,6 +32,7 @@
       "customerId": 3,
       "name": "Sophia Martinez",
       "email": "sophia.martinez@gmail.com",
+      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$UY9nNfeujHwIGzKmwTPUnQ$6B9+Wiv6A9OWlOuorgQ1Dg0D0ZXRFC3YzSp1mFSZaWs",
       "deliveryAddress": {
         "street": "3150 Lakeshore Road",
         "city": "Kelowna",
@@ -43,6 +46,7 @@
       "customerId": 4,
       "name": "Liam Wilson",
       "email": "liam.wilson@gmail.com",
+      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$CwQcxCrAbTErGPoIQHK+xQ$P+teSB8YL7YXMwHX8c0EFonQe4AhBrIyYYtDCHshUnU",
       "deliveryAddress": {
         "street": "1890 Cooper Road",
         "city": "Kelowna",
@@ -56,6 +60,7 @@
       "customerId": 5,
       "name": "Olivia Brown",
       "email": "olivia.brown@gmail.com",
+      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$RieGb/Vi1j0eJ4sDW9IXQw$l4xNDEPACfadzI19AOYdEjsrjhAkWZAYQdt2RptYbM0",
       "deliveryAddress": {
         "street": "5250 Big White Road",
         "city": "Kelowna",
