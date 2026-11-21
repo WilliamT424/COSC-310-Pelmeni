@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-import app.services.menu_services as menu_services
+from app.repositories import menu_repositories
 import app.services.restaurant_services as restaurant_services
 import app.services.cart_services as cart_services
 import app.repositories.cart_repository as cart_repository
@@ -67,7 +67,7 @@ def client(monkeypatch, tmp_path, sample_restaurants, sample_menu_catalog):
         restaurant_services, "read_json_file", lambda: sample_restaurants
     )
     monkeypatch.setattr(
-        menu_services, "read_menus_file", lambda: sample_menu_catalog
+        menu_repositories, "read_menus_file", lambda: sample_menu_catalog
     )
     monkeypatch.setattr(
         cart_services,

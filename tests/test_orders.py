@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main as api_module
-import app.services.menu_services as menu_services
+from app.repositories import menu_repositories
 import app.services.restaurant_services as restaurant_services
 from main import app
 from schemas.customer import Address, Customer
@@ -72,7 +72,7 @@ def client(
         restaurant_services, "read_json_file", lambda: sample_restaurants
     )
     monkeypatch.setattr(
-        menu_services, "read_menus_file", lambda: sample_menu_catalog
+        menu_repositories, "read_menus_file", lambda: sample_menu_catalog
     )
     monkeypatch.setattr(
         api_module,

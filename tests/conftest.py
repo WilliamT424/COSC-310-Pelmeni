@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.services.restaurant_services as restaurant_services
-import app.services.menu_services as menu_services
+from app.repositories import menu_repositories
 from app.main import app
 
 SAMPLE_RESTAURANTS = [
@@ -33,7 +33,7 @@ def sample_menus():
 @pytest.fixture
 def client(monkeypatch, sample_restaurants, sample_menus):
     monkeypatch.setattr(restaurant_services, "read_json_file", lambda: sample_restaurants)
-    monkeypatch.setattr(menu_services, "read_menus_file", lambda: sample_menus)
+    monkeypatch.setattr(menu_repositories, "read_menus_file", lambda: sample_menus)
     with TestClient(app) as test_client:
         yield test_client
 
@@ -68,7 +68,6 @@ def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolate
     import json
     from app.main import app as fastapi_app
     import app.repositories.restaurant_repositories as restaurant_repositories
-    import app.repositories.menu_repositories as menu_repositories
 
     restaurants_file, menus_file = tmp_path / "restaurants.json", tmp_path / "menus.json"
     restaurants_file.write_text(json.dumps(sample_restaurants))
