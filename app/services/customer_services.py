@@ -1,7 +1,6 @@
-from schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
-from repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
+from app.schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
+from app.repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
 from app.services.passwords import hash_password
-
 
 def create_customer(customerData: CustomerCreate, address: Address, status: bool = True) -> Customer:
 
