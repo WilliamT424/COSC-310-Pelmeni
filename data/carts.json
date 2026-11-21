@@ -4,5 +4,11 @@
     "customer_id": 9001,
     "restaurant_id": null,
     "items": []
+  },
+  {
+    "id": 2,
+    "customer_id": 1,
+    "restaurant_id": 1,
+    "items": []
   }
 ]

@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "orderId": 1,
+    "customerId": 1,
+    "restaurant_id": 1,
+    "restaurant_name": "Zakura",
+    "deliveryAddress": {
+      "street": "1450 Bernard Avenue",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1Y 6R8",
+      "country": "Canada"
+    },
+    "items": [
+      {
+        "menu_item_id": 1,
+        "menu_id": 1,
+        "name": "Salmon Nigiri",
+        "price": 8.99,
+        "quantity": 1
+      }
+    ],
+    "subtotal": 8.99,
+    "total": 8.99,
+    "status": "pending",
+    "created_at": "2026-11-21T05:51:17.846871+00:00"
+  }
+]
