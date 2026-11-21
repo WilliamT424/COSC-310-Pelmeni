@@ -2,5 +2,3 @@ fastapi
 httpx
 pytest
 uvicorn
-PyJWT
-pwdlib[argon2]

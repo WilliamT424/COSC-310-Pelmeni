@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from repositories.json_storage import atomic_write_json
+from app.repositories.json_storage import atomic_write_json
 
 current_dir = Path(__file__).resolve().parent.parent.parent
 MENUS_FILE = current_dir / "data" / "menus.json"

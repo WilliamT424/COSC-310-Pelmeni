@@ -1,74 +1,171 @@
-
- [
-    {
-      "customerId": 1,
-      "name": "Emily Johnson",
-      "email": "emily.johnson@gmail.com",
-      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$P1izOGAaw6JA+v47inysMg$phaNxO4zWpHgJxOJwGkqyYB+xfdLY8wxc78yyZhI30M",
-      "deliveryAddress": {
-        "street": "1450 Bernard Avenue",
-        "city": "Kelowna",
-        "province": "BC",
-        "postal_code": "V1Y 6R8",
-        "country": "Canada"
-      },
-      "status": true
+[
+  {
+    "customerId": 1,
+    "name": "Emily Johnson",
+    "email": "emily.johnson@gmail.com",
+    "deliveryAddress": {
+      "street": "1450 Bernard Avenue",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1Y 6R8",
+      "country": "Canada"
     },
-    {
-      "customerId": 2,
-      "name": "Michael Chen",
-      "email": "michael.chen@gmail.com",
-      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$s/cIAUoGGTeQTSdmcP48wA$Ft7I7LL4xlu0RN3cigcFij6ygHBaXCBWpO0B9RrEm68",
-      "deliveryAddress": {
-        "street": "2100 Springfield Road",
-        "city": "Kelowna",
-        "province": "BC",
-        "postal_code": "V1Y 7X1",
-        "country": "Canada"
-      },
-      "status": true
+    "status": true
+  },
+  {
+    "customerId": 2,
+    "name": "Michael Chen",
+    "email": "michael.chen@gmail.com",
+    "deliveryAddress": {
+      "street": "2100 Springfield Road",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1Y 7X1",
+      "country": "Canada"
     },
-    {
-      "customerId": 3,
-      "name": "Sophia Martinez",
-      "email": "sophia.martinez@gmail.com",
-      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$UY9nNfeujHwIGzKmwTPUnQ$6B9+Wiv6A9OWlOuorgQ1Dg0D0ZXRFC3YzSp1mFSZaWs",
-      "deliveryAddress": {
-        "street": "3150 Lakeshore Road",
-        "city": "Kelowna",
-        "province": "BC",
-        "postal_code": "V1W 3T1",
-        "country": "Canada"
-      },
-      "status": false
+    "status": true
+  },
+  {
+    "customerId": 3,
+    "name": "Sophia Martinez",
+    "email": "sophia.martinez@gmail.com",
+    "deliveryAddress": {
+      "street": "3150 Lakeshore Road",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1W 3T1",
+      "country": "Canada"
     },
-    {
-      "customerId": 4,
-      "name": "Liam Wilson",
-      "email": "liam.wilson@gmail.com",
-      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$CwQcxCrAbTErGPoIQHK+xQ$P+teSB8YL7YXMwHX8c0EFonQe4AhBrIyYYtDCHshUnU",
-      "deliveryAddress": {
-        "street": "1890 Cooper Road",
-        "city": "Kelowna",
-        "province": "BC",
-        "postal_code": "V1Y 8B7",
-        "country": "Canada"
-      },
-      "status": true
+    "status": false
+  },
+  {
+    "customerId": 4,
+    "name": "Liam Wilson",
+    "email": "liam.wilson@gmail.com",
+    "deliveryAddress": {
+      "street": "1890 Cooper Road",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1Y 8B7",
+      "country": "Canada"
     },
-    {
-      "customerId": 5,
-      "name": "Olivia Brown",
-      "email": "olivia.brown@gmail.com",
-      "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$RieGb/Vi1j0eJ4sDW9IXQw$l4xNDEPACfadzI19AOYdEjsrjhAkWZAYQdt2RptYbM0",
-      "deliveryAddress": {
-        "street": "5250 Big White Road",
-        "city": "Kelowna",
-        "province": "BC",
-        "postal_code": "V1P 1P3",
-        "country": "Canada"
-      },
-      "status": false
-    }
+    "status": true
+  },
+  {
+    "customerId": 5,
+    "name": "Olivia Brown",
+    "email": "olivia.brown@gmail.com",
+    "deliveryAddress": {
+      "street": "5250 Big White Road",
+      "city": "Kelowna",
+      "province": "BC",
+      "postal_code": "V1P 1P3",
+      "country": "Canada"
+    },
+    "status": false
+  },
+  {
+    "customerId": 6,
+    "name": "noor",
+    "email": "qwert@qwert.com",
+    "deliveryAddress": {
+      "street": "dundas",
+      "city": "trnto",
+      "province": "ON",
+      "postal_code": "dxs2se",
+      "country": "canada"
+    },
+    "status": true
+  },
+  {
+    "customerId": 7,
+    "name": "noor",
+    "email": "asd@qwert",
+    "deliveryAddress": {
+      "street": "dda",
+      "city": "asd",
+      "province": "on",
+      "postal_code": "ae2d3e",
+      "country": "canda"
+    },
+    "status": false
+  },
+  {
+    "customerId": 8,
+    "name": "ssf",
+    "email": "fafd@asd",
+    "deliveryAddress": {
+      "street": "asd",
+      "city": "asd",
+      "province": "asd",
+      "postal_code": "asd",
+      "country": "asd"
+    },
+    "status": true
+  },
+  {
+    "customerId": 9,
+    "name": "test",
+    "email": "test@test.ca",
+    "deliveryAddress": {
+      "street": "test",
+      "city": "test",
+      "province": "test",
+      "postal_code": "test",
+      "country": "test"
+    },
+    "status": true
+  },
+  {
+    "customerId": 10,
+    "name": "test",
+    "email": "test@test",
+    "deliveryAddress": {
+      "street": "test",
+      "city": "test",
+      "province": "test",
+      "postal_code": "test",
+      "country": "test"
+    },
+    "status": true
+  },
+  {
+    "customerId": 11,
+    "name": "test1",
+    "email": "test@test1",
+    "deliveryAddress": {
+      "street": "test1",
+      "city": "test1",
+      "province": "test1",
+      "postal_code": "test1",
+      "country": "test"
+    },
+    "status": true
+  },
+  {
+    "customerId": 12,
+    "name": "test",
+    "email": "tests@test",
+    "deliveryAddress": {
+      "street": "test",
+      "city": "test",
+      "province": "test",
+      "postal_code": "test",
+      "country": "test"
+    },
+    "status": true
+  },
+  {
+    "customerId": 13,
+    "name": "zxcv",
+    "email": "zxcv@zxvv",
+    "deliveryAddress": {
+      "street": "zxcv",
+      "city": "zxcv",
+      "province": "zxv",
+      "postal_code": "zxcv",
+      "country": "zxcv"
+    },
+    "status": true
+  }
 ]
-

@@ -19,7 +19,6 @@ class CustomerCreate(BaseModel):
 
     name: str = Field(min_length=1)
     email: str = Field(min_length=1)
-    password: str = Field(min_length=8)
     street: str = Field(min_length=1)
     city: str = Field(min_length=1)
     province: str = Field(min_length=1)

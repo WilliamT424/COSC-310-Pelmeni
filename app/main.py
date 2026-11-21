@@ -1,15 +1,13 @@
 from typing import Annotated, Optional
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, status, HTTPException, Query
+from fastapi import FastAPI, status, HTTPException, Query, Path as APIPath
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
-from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
-from fastapi import Depends
-from app.dependencies.dependencies import get_current_user, require_customer_ownership
+from app.services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 
 app = FastAPI()
 
@@ -87,7 +85,9 @@ async def get_single_menu_item(restaurant_id: int, menu_id: int, item_id: int):
     description="Returns a customer profile, including their delivery address and account status. The customer ID is assigned by the server.",
     responses={404: {"description": "Customer not found"}},
 )
-async def get_customer(customer_id: int, customer=Depends(require_customer_ownership)):
+async def get_customer(
+    customer_id: Annotated[int, APIPath(description="Server-assigned customer ID.")],
+):
     customer = retrieve_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -114,20 +114,25 @@ async def create_customer(new_customer: CustomerCreate):
     description="Updates only the provided profile or delivery-address fields of an existing customer. Omitted fields keep their current values.",
     responses={404: {"description": "Customer not found"}, 422: {"description": "Invalid customer data"}},
 )
-async def update_customer_route(customer_id: int, updates: CustomerUpdate,customer=Depends(require_customer_ownership)):
+async def update_customer_route(
+    customer_id: Annotated[int, APIPath(description="ID of the customer to update.")],
+    updates: CustomerUpdate,
+):
     customer = update_customer(customer_id, updates.model_dump(exclude_unset=True))
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
 
-@app.patch(
+@app.post(
     "/customers/{customer_id}/deactivate",
     response_model=Customer,
     summary="Deactivate a customer",
     description="Marks an existing customer account inactive without deleting its record.",
     responses={404: {"description": "Customer not found"}},
 )
-async def deactivate_customer_route(customer_id: int ,customer=Depends(require_customer_ownership)):
+async def deactivate_customer_route(
+    customer_id: Annotated[int, APIPath(description="ID of the customer to deactivate.")],
+):
     customer = deactivate_customer(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -141,8 +146,8 @@ async def deactivate_customer_route(customer_id: int ,customer=Depends(require_c
     description="Creates a restaurant and persists it. The id is assigned by the server.",
     responses={422: {"description": "Invalid restaurant data (missing field, rating outside 0-5, negative delivery time, empty name or cuisine)"}},
 )
-async def create_restaurant(new_restaurant: RestaurantCreate):#roles needed, discuss with Gurnoor
-   return create_restaurant_service(new_restaurant)
+async def create_restaurant(new_restaurant: RestaurantCreate):
+    return create_restaurant_service(new_restaurant)
 
 @app.patch(
     "/restaurants/{restaurant_id}",
@@ -184,33 +189,6 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
-@app.post("/auth/login", response_model=Token)
-def login(credentials: LoginRequest):
-
-    customer = authenticate_user(
-        credentials.email,
-        credentials.password
-    )
-
-    if customer is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect email or password"
-        )
-
-    token = create_access_token(customer["customerId"]) 
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
-
-@app.get("/auth/me")
-def get_my_account(customer=Depends(get_current_user)):
-    return {
-        "customerId": customer["customerId"],
-        "name": customer["name"],
-        "email": customer["email"]
-    }
 
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)

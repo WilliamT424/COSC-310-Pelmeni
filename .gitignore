@@ -216,7 +216,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-
-# Security: ignore local secrets
-.env.*
-passwords.md
