@@ -372,7 +372,7 @@ async def get_order_route(order_id: int):
     summary="Retrieve a customer's orders",
     description="Returns all orders associated with a customer.",
 )
-async def get_customer_orders_route(customer_id: int):
+async def get_customer_orders_route(customer_id: int, customer=Depends(require_customer_ownership)):
     orders = retrieve_customer_orders(customer_id)
 
     return {"orders": orders}

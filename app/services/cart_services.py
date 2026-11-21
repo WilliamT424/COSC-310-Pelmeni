@@ -79,7 +79,7 @@ def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id
     if cart_item is not None:
         cart_item["quantity"] += quantity
         write_carts_file(carts)
-        return cart
+        return _with_totals(cart)
 
     cart["items"].append({
         "menu_item_id": item_id,
@@ -91,10 +91,7 @@ def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id
 
     write_carts_file(carts)
 
-    return {
-        **cart,
-        **calculate_cart_totals(cart)
-    }
+    return _with_totals(cart)
 
 def update_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id: int, quantity: int):
     if quantity <= 0 or not _is_active_customer(customer_id):
@@ -111,7 +108,7 @@ def update_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id
 
     cart_item["quantity"] = quantity
     write_carts_file(carts)
-    return cart
+    return _with_totals(cart)
 
 def remove_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id: int):
     if not _is_active_customer(customer_id):
@@ -128,7 +125,7 @@ def remove_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id
 
     cart["items"].remove(cart_item)
     write_carts_file(carts)
-    return cart
+    return _with_totals(cart)
 
 def clear_cart(customer_id: int, restaurant_id: int):
     if not _is_active_customer(customer_id):
@@ -141,7 +138,11 @@ def clear_cart(customer_id: int, restaurant_id: int):
 
     cart["items"] = []
     write_carts_file(carts)
-    return cart
+    return _with_totals(cart)
+
+def _with_totals(cart: dict) -> dict:
+    """The cart as returned to clients: every cart response carries the backend-calculated totals."""
+    return {**cart, **calculate_cart_totals(cart)}
 
 def calculate_cart_totals(cart):
     subtotal = sum(
