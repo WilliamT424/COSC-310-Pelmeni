@@ -52,7 +52,7 @@ def test_list_restaurants_rejects_invalid_restaurant_data(monkeypatch):
 
 
 def test_update_json(data_file, monkeypatch):
-    monkeypatch.setattr(restaurant_repositories, "current_dir", data_file.parent.parent)
+    monkeypatch.setattr(restaurant_repositories, "RESTAURANTS_FILE", data_file)
     new_data = [{"id": 3, "name": "Gamma"}]
     restaurant_repositories.update_json(new_data)
     result = restaurant_repositories.read_json_file(data_file)

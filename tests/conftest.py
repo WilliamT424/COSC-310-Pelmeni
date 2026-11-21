@@ -1,8 +1,11 @@
+import os
+os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret-key-that-is-at-least-32-bytes-long")
+
 import pytest
 from fastapi.testclient import TestClient
 
 import app.services.restaurant_services as restaurant_services
-import app.services.menu_services as menu_services
+from app.repositories import menu_repositories
 from app.main import app
 
 SAMPLE_RESTAURANTS = [
@@ -19,7 +22,6 @@ SAMPLE_MENUS = [
     }
 ]
 
-
 @pytest.fixture
 def sample_restaurants():
     return [dict(restaurant) for restaurant in SAMPLE_RESTAURANTS]
@@ -28,12 +30,57 @@ def sample_restaurants():
 def sample_menus():
     return [dict(menu) for menu in SAMPLE_MENUS]
 
-
 @pytest.fixture
 def client(monkeypatch, sample_restaurants, sample_menus):
-    #TestClient wired to isolated sample data instead of the committed dataset
     monkeypatch.setattr(restaurant_services, "read_json_file", lambda: sample_restaurants)
-    monkeypatch.setattr(menu_services, "read_menus_file", lambda: sample_menus)
+    monkeypatch.setattr(menu_repositories, "read_menus_file", lambda: sample_menus)
     with TestClient(app) as test_client:
         yield test_client
 
+@pytest.fixture(scope="session", autouse=True)
+def real_data_files_untouched():
+    import hashlib
+    from pathlib import Path
+
+    data_dir = Path(__file__).resolve().parent.parent / "data"
+    digest = lambda: {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in data_dir.glob("*.json")}
+    before = digest()
+    yield
+    assert digest() == before, "A test modified a file in data/; tests must use temp copies"
+
+from auth_support import CASEY_EMAIL, MORGAN_EMAIL, bearer, sample_customers, token_for
+
+@pytest.fixture
+def isolated_users(tmp_path, monkeypatch):
+    import importlib
+    import json
+
+    customers_file = tmp_path / "customers.json"
+    customers_file.write_text(json.dumps(sample_customers()))
+    for module_name in ("app.repositories.customer_repositories", "repositories.customer_repositories"):
+        module = importlib.import_module(module_name)
+        for name in ("read_all_customers_json_file", "read_customer_json_file", "write_customer_json_file"):
+            monkeypatch.setattr(getattr(module, name), "__defaults__", (customers_file,))
+    yield customers_file
+
+@pytest.fixture
+def auth_client(tmp_path, monkeypatch, sample_restaurants, sample_menus, isolated_users):
+    import json
+    from app.main import app as fastapi_app
+    import app.repositories.restaurant_repositories as restaurant_repositories
+
+    restaurants_file, menus_file = tmp_path / "restaurants.json", tmp_path / "menus.json"
+    restaurants_file.write_text(json.dumps(sample_restaurants))
+    menus_file.write_text(json.dumps(sample_menus))
+    monkeypatch.setattr(restaurant_repositories, "RESTAURANTS_FILE", restaurants_file)
+    monkeypatch.setattr(menu_repositories, "MENUS_FILE", menus_file)
+    with TestClient(fastapi_app) as test_client:
+        yield test_client
+
+@pytest.fixture
+def customer_headers(auth_client):
+    return bearer(token_for(auth_client, CASEY_EMAIL))
+
+@pytest.fixture
+def manager_headers(auth_client):
+    return bearer(token_for(auth_client, MORGAN_EMAIL))
