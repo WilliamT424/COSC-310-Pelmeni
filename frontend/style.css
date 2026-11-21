@@ -14,3 +14,8 @@ button { padding: 8px 14px; cursor: pointer; }
 .error { color: #b00020; }
 .ok { color: #1b7f3b; }
 .unavailable { color: #999; text-decoration: line-through; }
+nav { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+nav a { margin-right: 0; }
+.add-to-cart { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+input.qty { width: 60px; }
+label.inline { flex-direction: row; align-items: center; gap: 6px; }

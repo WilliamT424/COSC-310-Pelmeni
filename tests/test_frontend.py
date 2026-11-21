@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_frontend_index_is_served(client):
     response = client.get("/ui/")
     assert response.status_code == 200
@@ -23,3 +26,79 @@ def test_frontend_script_uses_menu_item_edit_endpoints(client):
 
 def test_frontend_script_does_not_choose_restaurant_ids(client):
     assert "data.id" not in client.get("/ui/app.js").text
+
+
+# Checkout workflow (Milestone 2) --------------------------------------------
+
+def test_frontend_script_covers_the_customer_workflow(client):
+    script = client.get("/ui/app.js").text
+    for endpoint in ("/auth/login", "/auth/me", "/customers\"", "/cart/items", "/checkout?restaurant_id=", "/orders/"):
+        assert endpoint in script, f"frontend never calls {endpoint}"
+    assert "Authorization" in script
+
+
+def test_frontend_never_computes_totals_itself(client):
+    script = client.get("/ui/app.js").text
+    assert "cart.total" in script and "order.total" in script
+    assert "reduce(" not in script
+
+
+def test_frontend_page_has_a_nav_the_script_can_fill(client):
+    assert 'id="nav"' in client.get("/ui/").text
+
+
+@pytest.fixture
+def workflow(auth_client, tmp_path, monkeypatch):
+    import app.repositories.cart_repository as cart_repository
+    import app.repositories.order_repositories as order_repositories
+    for module, name in ((cart_repository, "CARTS_FILE"), (order_repositories, "ORDERS_FILE")):
+        path = tmp_path / f"{name}.json"
+        path.write_text("[]")
+        monkeypatch.setattr(module, name, path)
+    return auth_client
+
+
+def test_customer_workflow_the_frontend_drives(workflow):
+    """Same sequence of calls the UI makes: register, sign in, build a cart, check out, view the order."""
+    registration = {"name": "Fran Frontend", "email": "fran@example.com", "password": "longenough1",
+                    "street": "1 Main St", "city": "Kelowna", "province": "BC",
+                    "postal_code": "V1V 1V1", "country": "Canada"}
+    assert workflow.post("/customers", json=registration).status_code == 201
+
+    token = workflow.post("/auth/login", json={"email": registration["email"], "password": registration["password"]}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    me = workflow.get("/auth/me", headers=headers).json()
+    cart_path = f"/customers/{me['customerId']}/cart"
+
+    add = lambda quantity: workflow.post(f"{cart_path}/items", headers=headers, json={
+        "restaurant_id": 101, "menu_id": 1, "menu_item_id": 1, "quantity": quantity})
+    assert add(1).status_code == 200
+    query = {"restaurant_id": 101, "menu_id": 1}
+    assert workflow.patch(f"{cart_path}/items/1", headers=headers, params=query, json={"quantity": 3}).status_code == 200
+
+    cart = workflow.get(cart_path, headers=headers, params={"restaurant_id": 101}).json()
+    assert cart["total"] == 29.97  # 3 x 9.99, calculated by the backend
+
+    order = workflow.post(f"/customers/{me['customerId']}/checkout", headers=headers, params={"restaurant_id": 101})
+    assert order.status_code == 201
+    order = order.json()
+    assert order["total"] == 29.97 and order["status"] == "pending"
+
+    assert workflow.get(f"/orders/{order['orderId']}", headers=headers).json() == order
+    assert workflow.get(cart_path, headers=headers, params={"restaurant_id": 101}).json()["items"] == []
+    assert workflow.get(f"/customers/{me['customerId']}/orders", headers=headers).json()["orders"] == [order]
+
+
+def test_cart_and_checkout_reject_other_customers(workflow, customer_headers):
+    other = "/customers/9002"
+    assert workflow.get(f"{other}/cart", headers=customer_headers, params={"restaurant_id": 101}).status_code == 403
+    assert workflow.post(f"{other}/checkout", headers=customer_headers, params={"restaurant_id": 101}).status_code == 403
+    assert workflow.get(f"{other}/orders", headers=customer_headers).status_code == 403
+
+
+def test_checkout_of_empty_cart_is_refused_and_creates_no_order(workflow, customer_headers):
+    path = "/customers/9001"
+    workflow.get(f"{path}/cart", headers=customer_headers, params={"restaurant_id": 101})
+    response = workflow.post(f"{path}/checkout", headers=customer_headers, params={"restaurant_id": 101})
+    assert response.status_code == 409
+    assert workflow.get(f"{path}/orders", headers=customer_headers).json() == {"orders": []}
