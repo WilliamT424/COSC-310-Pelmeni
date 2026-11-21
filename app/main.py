@@ -5,6 +5,7 @@ from fastapi import FastAPI, status, HTTPException, Query
 from app.services.order_services import retrieve_order, retrieve_customer_orders
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
+from app.services.checkout_services import checkout, CheckoutError, CustomerNotFound, CartNotFound
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
@@ -303,6 +304,24 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
+@app.post(
+    "/customers/{customer_id}/checkout",
+    status_code=201,
+    response_model=Order,
+    summary="Check out a customer's cart",
+    description="Validates the customer's cart for the restaurant against current restaurant and menu data, recalculates prices "
+                "and the total, saves an order, and only then clears the cart. Nothing is saved if validation fails.",
+    responses={404: {"description": "Customer not found or inactive, or the customer has no cart for this restaurant"},
+               409: {"description": "Cart cannot be checked out (empty, invalid quantity, restaurant or item missing, item unavailable)"}},
+)
+async def checkout_route(customer_id: int, restaurant_id: int, customer=Depends(require_customer_ownership)):
+    try:
+        return checkout(customer_id, restaurant_id)
+    except (CustomerNotFound, CartNotFound) as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except CheckoutError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+
 @app.post("/auth/login", response_model=Token)
 def login(credentials: LoginRequest):
 
@@ -357,7 +376,6 @@ async def get_customer_orders_route(customer_id: int):
     orders = retrieve_customer_orders(customer_id)
 
     return {"orders": orders}
-
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")
