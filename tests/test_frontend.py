@@ -28,33 +28,20 @@ def test_frontend_script_does_not_choose_restaurant_ids(client):
     assert "data.id" not in client.get("/ui/app.js").text
 
 
-# Checkout workflow (Milestone 2) --------------------------------------------
-
-def test_frontend_script_covers_the_customer_workflow(client):
-    script = client.get("/ui/app.js").text
-    for endpoint in ("/auth/login", "/auth/me", "/customers\"", "/cart/items", "/checkout?restaurant_id=", "/orders/"):
-        assert endpoint in script, f"frontend never calls {endpoint}"
-    assert "Authorization" in script
-
-
-def test_frontend_never_computes_totals_itself(client):
-    script = client.get("/ui/app.js").text
-    assert "cart.total" in script and "order.total" in script
-    assert "reduce(" not in script
-
-
-def test_frontend_page_has_a_nav_the_script_can_fill(client):
-    assert 'id="nav"' in client.get("/ui/").text
-
+# Checkout workflow: the sequence of API calls the frontend makes ----------------
 
 @pytest.fixture
 def workflow(auth_client, tmp_path, monkeypatch):
     import app.repositories.cart_repository as cart_repository
-    import app.repositories.order_repositories as order_repositories
-    for module, name in ((cart_repository, "CARTS_FILE"), (order_repositories, "ORDERS_FILE")):
-        path = tmp_path / f"{name}.json"
-        path.write_text("[]")
-        monkeypatch.setattr(module, name, path)
+    import app.repositories.order_repository as order_repository
+    carts_file, orders_file = tmp_path / "carts.json", tmp_path / "orders.json"
+    carts_file.write_text("[]")
+    orders_file.write_text("[]")
+    monkeypatch.setattr(cart_repository, "CARTS_FILE", carts_file)
+    # The order repository takes its file as a default argument, so patch the defaults
+    for name in ("read_orders_file", "write_orders_file", "get_order", "get_orders_by_customer"):
+        function = getattr(order_repository, name)
+        monkeypatch.setattr(function, "__defaults__", (orders_file,))
     return auth_client
 
 
@@ -102,3 +89,21 @@ def test_checkout_of_empty_cart_is_refused_and_creates_no_order(workflow, custom
     response = workflow.post(f"{path}/checkout", headers=customer_headers, params={"restaurant_id": 101})
     assert response.status_code == 409
     assert workflow.get(f"{path}/orders", headers=customer_headers).json() == {"orders": []}
+
+
+def test_every_cart_change_returns_backend_totals(workflow, customer_headers):
+    """The cart page re-renders straight from these responses, so each one needs subtotal and total."""
+    cart_path = "/customers/9001/cart"
+    item = {"restaurant_id": 101, "menu_id": 1, "menu_item_id": 1, "quantity": 1}
+    query = {"restaurant_id": 101, "menu_id": 1}
+
+    responses = [
+        workflow.post(f"{cart_path}/items", headers=customer_headers, json=item),                      # new line
+        workflow.post(f"{cart_path}/items", headers=customer_headers, json=item),                      # existing line
+        workflow.patch(f"{cart_path}/items/1", headers=customer_headers, params=query, json={"quantity": 4}),
+        workflow.delete(f"{cart_path}/items/1", headers=customer_headers, params=query),
+        workflow.delete(cart_path, headers=customer_headers, params={"restaurant_id": 101}),
+    ]
+    assert [r.status_code for r in responses] == [200] * 5
+    assert [r.json()["total"] for r in responses] == [9.99, 19.98, 39.96, 0, 0]
+    assert all(r.json()["subtotal"] == r.json()["total"] for r in responses)

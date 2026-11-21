@@ -2,21 +2,21 @@ from typing import Optional
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, status, HTTPException, Query
+from app.services.order_services import retrieve_order, retrieve_customer_orders
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.services.checkout_services import checkout, CheckoutError, CustomerNotFound, CartNotFound
-from app.services.order_services import get_order, list_orders_for_customer
-from app.schemas.order import Order
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
 from app.services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 from app.services.auth_services import authenticate_user, create_access_token
-from fastapi import Depends
 from app.dependencies.dependencies import get_current_user, require_customer_ownership
 from app.schemas.auth import LoginRequest, Token
 from app.schemas.cart import Cart, CartItemCreate, CartItemUpdate
+from app.schemas.order import Order, OrdersResponse
 from app.services.cart_services import create_cart, get_customer_cart, add_item_to_cart, update_cart_item, remove_cart_item, clear_cart
+from fastapi import Depends
 
 app = FastAPI()
 
@@ -145,7 +145,11 @@ async def deactivate_customer_route(customer_id: int ,customer=Depends(require_c
     description="Creates an empty cart for the customer and restaurant, or returns the existing cart.",
     responses={404: {"description": "Customer not found or inactive"}},
 )
-async def create_customer_cart(customer_id: int, restaurant_id: int | None = None, _owner=Depends(require_customer_ownership)):
+async def create_customer_cart(
+    customer_id: int,
+    restaurant_id: int | None = None,
+    customer=Depends(require_customer_ownership)
+):
     cart = create_cart(customer_id, restaurant_id)
     if cart is None:
         raise HTTPException(status_code=404, detail="Customer not found or inactive")
@@ -158,7 +162,11 @@ async def create_customer_cart(customer_id: int, restaurant_id: int | None = Non
     description="Returns the customer's cart for the specified restaurant, including calculated totals.",
     responses={404: {"description": "Customer not found or inactive"}},
 )
-async def get_customer_cart_route(customer_id: int, restaurant_id: int, _owner=Depends(require_customer_ownership)):
+async def get_customer_cart_route(
+    customer_id: int,
+    restaurant_id: int,
+    customer=Depends(require_customer_ownership)
+):
     cart = get_customer_cart(customer_id, restaurant_id)
     if cart is None:
         raise HTTPException(status_code=404, detail="Customer not found or inactive")
@@ -171,7 +179,11 @@ async def get_customer_cart_route(customer_id: int, restaurant_id: int, _owner=D
     description="Adds an available menu item to the customer's cart. The item price is taken from the menu.",
     responses={404: {"description": "Customer or available menu item not found"}, 422: {"description": "Invalid quantity or item data"}},
 )
-async def add_item_to_customer_cart(customer_id: int, item: CartItemCreate, _owner=Depends(require_customer_ownership)):
+async def add_item_to_customer_cart(
+    customer_id: int,
+    item: CartItemCreate,
+    customer=Depends(require_customer_ownership)
+):
     cart = add_item_to_cart(
         customer_id,
         item.restaurant_id,
@@ -190,7 +202,14 @@ async def add_item_to_customer_cart(customer_id: int, item: CartItemCreate, _own
     description="Updates the quantity of an item in the customer's cart.",
     responses={404: {"description": "Cart or item not found"}, 422: {"description": "Invalid quantity"}},
 )
-async def update_customer_cart_item(customer_id: int, menu_item_id: int, restaurant_id: int, menu_id: int, updates: CartItemUpdate, _owner=Depends(require_customer_ownership)):
+async def update_customer_cart_item(
+    customer_id: int,
+    menu_item_id: int,
+    restaurant_id: int,
+    menu_id: int,
+    updates: CartItemUpdate,
+    customer=Depends(require_customer_ownership)
+):
     cart = update_cart_item(customer_id, restaurant_id, menu_id, menu_item_id, updates.quantity)
     if cart is None:
         raise HTTPException(status_code=404, detail="Cart or item not found")
@@ -203,7 +222,13 @@ async def update_customer_cart_item(customer_id: int, menu_item_id: int, restaur
     description="Removes the specified menu item from the customer's cart.",
     responses={404: {"description": "Cart or item not found"}},
 )
-async def remove_customer_cart_item(customer_id: int, menu_item_id: int, restaurant_id: int, menu_id: int, _owner=Depends(require_customer_ownership)):
+async def remove_customer_cart_item(
+    customer_id: int,
+    menu_item_id: int,
+    restaurant_id: int,
+    menu_id: int,
+    customer=Depends(require_customer_ownership)
+):
     cart = remove_cart_item(customer_id, restaurant_id, menu_id, menu_item_id)
     if cart is None:
         raise HTTPException(status_code=404, detail="Cart or item not found")
@@ -216,7 +241,11 @@ async def remove_customer_cart_item(customer_id: int, menu_item_id: int, restaur
     description="Removes all items from the customer's cart while keeping the cart.",
     responses={404: {"description": "Cart not found or customer inactive"}},
 )
-async def clear_customer_cart(customer_id: int, restaurant_id: int, _owner=Depends(require_customer_ownership)):
+async def clear_customer_cart(
+    customer_id: int,
+    restaurant_id: int,
+    customer=Depends(require_customer_ownership)
+):
     cart = clear_cart(customer_id, restaurant_id)
     if cart is None:
         raise HTTPException(status_code=404, detail="Cart not found or customer inactive")
@@ -275,6 +304,24 @@ async def update_item_in_menu(restaurant_id: int, menu_id: int, item_id: int, up
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
+@app.post(
+    "/customers/{customer_id}/checkout",
+    status_code=201,
+    response_model=Order,
+    summary="Check out a customer's cart",
+    description="Validates the customer's cart for the restaurant against current restaurant and menu data, recalculates prices "
+                "and the total, saves an order, and only then clears the cart. Nothing is saved if validation fails.",
+    responses={404: {"description": "Customer not found or inactive, or the customer has no cart for this restaurant"},
+               409: {"description": "Cart cannot be checked out (empty, invalid quantity, restaurant or item missing, item unavailable)"}},
+)
+async def checkout_route(customer_id: int, restaurant_id: int, customer=Depends(require_customer_ownership)):
+    try:
+        return checkout(customer_id, restaurant_id)
+    except (CustomerNotFound, CartNotFound) as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except CheckoutError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+
 @app.post("/auth/login", response_model=Token)
 def login(credentials: LoginRequest):
 
@@ -303,43 +350,32 @@ def get_my_account(customer=Depends(get_current_user)):
         "email": customer["email"]
     }
 
-@app.post(
-    "/customers/{customer_id}/checkout",
-    status_code=201,
-    response_model=Order,
-    summary="Check out a customer's cart",
-    description="Validates the customer's cart for the restaurant against current restaurant and menu data, recalculates prices "
-                "and the total, saves an order, and only then clears the cart. Nothing is saved if validation fails.",
-    responses={404: {"description": "Customer not found or inactive, or the customer has no cart for this restaurant"},
-               409: {"description": "Cart cannot be checked out (empty, invalid quantity, restaurant or item missing, item unavailable)"}},
-)
-async def checkout_route(customer_id: int, restaurant_id: int, _owner=Depends(require_customer_ownership)):
-    try:
-        return checkout(customer_id, restaurant_id)
-    except (CustomerNotFound, CartNotFound) as error:
-        raise HTTPException(status_code=404, detail=str(error))
-    except CheckoutError as error:
-        raise HTTPException(status_code=409, detail=str(error))
-
 @app.get(
     "/orders/{order_id}",
     response_model=Order,
-    summary="Get an order",
+    summary="Retrieve an order",
+    description="Returns a single order by its ID.",
     responses={404: {"description": "Order not found"}},
 )
 async def get_order_route(order_id: int):
-    order = get_order(order_id)
+    order = retrieve_order(order_id)
+
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+
     return order
+
 
 @app.get(
     "/customers/{customer_id}/orders",
-    summary="List a customer's orders",
-    description="Returns every order placed by the customer, oldest first, as {\"orders\": [Order]}. A customer with no orders gets an empty list.",
+    response_model=OrdersResponse,
+    summary="Retrieve a customer's orders",
+    description="Returns all orders associated with a customer.",
 )
-async def get_customer_orders(customer_id: int, _owner=Depends(require_customer_ownership)):
-    return {"orders": list_orders_for_customer(customer_id)}
+async def get_customer_orders_route(customer_id: int, customer=Depends(require_customer_ownership)):
+    orders = retrieve_customer_orders(customer_id)
+
+    return {"orders": orders}
 
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")

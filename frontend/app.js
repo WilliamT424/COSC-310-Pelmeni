@@ -1,4 +1,5 @@
 const view = document.getElementById("view");
+const customerTokenKey = "pelmeniCustomerToken";
 
 // Small helpers -------------------------------------------------------------
 function el(tag, props = {}, ...children) {
@@ -10,67 +11,27 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
-// Session (JWT from POST /auth/login) ---------------------------------------
-// Kept in localStorage so a page refresh doesn't sign the customer out.
-const TOKEN_KEY = "pelmeni_token";
-const USER_KEY = "pelmeni_user";
-const LAST_RESTAURANT_KEY = "pelmeni_last_restaurant";
-
-function store(key, value) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch (_) { /* storage blocked: session just won't persist */ }
-}
-
-function load(key) {
-  try { return localStorage.getItem(key); } catch (_) { return null; }
-}
-
-function currentUser() {
-  try { return JSON.parse(load(USER_KEY)); } catch (_) { return null; }
-}
-
-function signOut() {
-  store(TOKEN_KEY, null);
-  store(USER_KEY, null);
-  renderNav();
-}
-
-// Navigate to a hash, re-rendering even if we are already on it
-function go(hash) {
-  if (location.hash === hash) route();
-  else location.hash = hash;
-}
-
-// Views that need a customer call this first; returns the user, or null after redirecting to sign in
-function requireLogin() {
-  const user = currentUser();
-  if (user && load(TOKEN_KEY)) return user;
-  try { sessionStorage.setItem("pelmeni_return_to", location.hash); } catch (_) { /* ignore */ }
-  go("#/login");
-  return null;
-}
-
 async function api(path, options = {}) {
-  const token = load(TOKEN_KEY);
-  if (token) {
-    options = { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } };
-  }
-  const response = await fetch(path, options);
+   const headers = new Headers(options.headers || {});
+
+   if (PelmeniAuth.isLoggedIn()) {
+     headers.set("Authorization", `Bearer ${PelmeniAuth.getToken()}`);
+   }
+   const response = await fetch(path, {
+     ...options,
+     headers
+   });
+  
   if (!response.ok) {
-    if (response.status === 401 && token) {
-      // Token expired or the account was deactivated: the session is no longer valid
-      signOut();
-      go("#/login");
-    }
     let detail = response.statusText;
     try {
       const body = await response.json();
       if (typeof body.detail === "string") detail = body.detail;
       else if (Array.isArray(body.detail)) detail = body.detail.map(d => d.msg).join(", ");
     } catch (_) { /* non-JSON error body */ }
-    throw new Error(`${response.status}: ${detail}`);
+    const error = new Error(`${response.status}: ${detail}`);
+    error.status = response.status;
+    throw error;
   }
   return response.json();
 }
@@ -130,6 +91,7 @@ async function detailView(id) {
     el("p", { className: "muted" },
       `${restaurant.cuisine} · rating ${restaurant.rating} · ${restaurant.deliveryTime} min delivery`),
     el("p", {}, el("a", { href: `#/restaurant/${id}/edit` }, "Edit restaurant")),
+    el("p", {}, el("a", { href: `#/cart/${id}` }, "View My Cart")),
     el("h3", {}, "Menu"),
     menusBox,
   );
@@ -162,236 +124,124 @@ function jsonRequest(method, body) {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
+// Cart API functions --------------------------------------------------------
+
+async function getCustomerId() {
+  const customer = await PelmeniAuth.getCurrentUser();
+  return customer.customerId;
+}
+
+async function getCart(restaurantId) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart?restaurant_id=${restaurantId}`
+  );
+}
+
+async function createOrGetCart(restaurantId) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart?restaurant_id=${restaurantId}`,
+    { method: "POST" }
+  );
+}
+
+async function addToCart(restaurantId, menuId, menuItemId, quantity = 1) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart/items`,
+    jsonRequest("POST", {
+      restaurant_id: restaurantId,
+      menu_id: menuId,
+      menu_item_id: menuItemId,
+      quantity: quantity
+    })
+  );
+}
+
+async function updateCartItem(restaurantId, menuId, menuItemId, quantity) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart/items/${menuItemId}?restaurant_id=${restaurantId}&menu_id=${menuId}`,
+    jsonRequest("PATCH", { quantity })
+  );
+}
+
+async function removeCartItem(restaurantId, menuId, menuItemId) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart/items/${menuItemId}?restaurant_id=${restaurantId}&menu_id=${menuId}`,
+    { method: "DELETE" }
+  );
+}
+
+async function clearCart(restaurantId) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/cart?restaurant_id=${restaurantId}`,
+    { method: "DELETE" }
+  );
+}
+
+async function checkoutCart(restaurantId) {
+  const customerId = await getCustomerId();
+
+  return api(
+    `/customers/${customerId}/checkout?restaurant_id=${restaurantId}`,
+    { method: "POST" }
+  );
+}
+
+async function getCustomerOrders() {
+  const customerId = await getCustomerId();
+  return api(`/customers/${customerId}/orders`);
+}
+
 function itemCard(restaurantId, menuId, item) {
   const card = el("div", { className: "card" },
     el("span", { className: item.available ? "" : "unavailable" }, `${item.name} — $${item.price.toFixed(2)}`),
     el("div", { className: "muted" }, item.description + (item.available ? "" : " (unavailable)")),
   );
+
+  if (item.available) {
+    const addButton = el("button", { type: "button" }, "Add to Cart");
+
+    addButton.addEventListener("click", async () => {
+      if (!PelmeniAuth.isLoggedIn()) {
+        location.hash = "#/login";
+        return;
+      }
+
+      addButton.disabled = true;
+      addButton.textContent = "Adding...";
+
+      try {
+        await createOrGetCart(restaurantId);
+        await addToCart(restaurantId, menuId, item.id, 1);
+
+        addButton.textContent = "Added ✓";
+      } catch (err) {
+        addButton.textContent = "Add to Cart";
+        alert(err.message);
+      } finally {
+        addButton.disabled = false;
+      }
+    });
+
+    card.append(addButton);
+  }
   const editForm = itemForm(item, async data => {
     await api(`/restaurants/${restaurantId}/menus/${menuId}/items/${item.id}`, jsonRequest("PATCH", data));
     detailView(restaurantId);
   });
-  card.append(addToCartControl(restaurantId, menuId, item));
   card.append(el("details", {}, el("summary", {}, "Edit"), editForm));
   return card;
-}
-
-// Cart ----------------------------------------------------------------------
-function money(amount) {
-  return `$${Number(amount).toFixed(2)}`;
-}
-
-function addToCartControl(restaurantId, menuId, item) {
-  if (!item.available) return el("span", {});
-  const message = el("span", { className: "muted" });
-  const quantity = el("input", { type: "number", min: 1, step: 1, value: 1, className: "qty" });
-  const button = el("button", { type: "button" }, "Add to cart");
-  button.addEventListener("click", async () => {
-    const user = requireLogin();
-    if (!user) return;
-    button.disabled = true;
-    try {
-      await api(`/customers/${user.customerId}/cart/items`, jsonRequest("POST", {
-        restaurant_id: Number(restaurantId),
-        menu_id: menuId,
-        menu_item_id: item.id,
-        quantity: Number(quantity.value),
-      }));
-      store(LAST_RESTAURANT_KEY, String(restaurantId));
-      message.className = "ok";
-      message.replaceChildren("Added. ", el("a", { href: `#/cart/${restaurantId}` }, "View cart"));
-    } catch (err) {
-      message.className = "error";
-      message.textContent = err.message;
-    } finally {
-      button.disabled = false;
-    }
-  });
-  return el("div", { className: "add-to-cart" }, quantity, button, message);
-}
-
-// The cart is always re-fetched after a change so the total shown is the backend's, never computed here
-async function cartView(restaurantId) {
-  const user = requireLogin();
-  if (!user) return;
-  restaurantId = restaurantId || load(LAST_RESTAURANT_KEY);
-  if (!restaurantId) {
-    view.replaceChildren(el("h2", {}, "Your cart"),
-      el("p", { className: "muted" }, "Your cart is empty. Pick a restaurant and add something from its menu."),
-      el("a", { href: "#/" }, "Browse restaurants"));
-    return;
-  }
-  store(LAST_RESTAURANT_KEY, String(restaurantId));
-
-  const restaurant = await api(`/restaurants/${restaurantId}`);
-  const cart = await api(`/customers/${user.customerId}/cart?restaurant_id=${restaurantId}`);
-  const message = el("p");
-  const base = `/customers/${user.customerId}/cart`;
-
-  async function change(request) {
-    try {
-      await request();
-      cartView(restaurantId);
-    } catch (err) {
-      message.className = "error";
-      message.textContent = err.message;
-    }
-  }
-
-  const lines = cart.items.map(line => {
-    const quantity = el("input", { type: "number", min: 1, step: 1, value: line.quantity, className: "qty" });
-    const query = `restaurant_id=${restaurantId}&menu_id=${line.menu_id}`;
-    return el("div", { className: "card" },
-      el("div", {}, `${line.name} — ${money(line.price)} each`),
-      el("div", { className: "add-to-cart" },
-        el("label", { className: "inline" }, "Qty", quantity),
-        el("button", { type: "button", onclick: () => change(() =>
-          api(`${base}/items/${line.menu_item_id}?${query}`, jsonRequest("PATCH", { quantity: Number(quantity.value) }))) }, "Update"),
-        el("button", { type: "button", onclick: () => change(() =>
-          api(`${base}/items/${line.menu_item_id}?${query}`, { method: "DELETE" })) }, "Remove"),
-      ));
-  });
-
-  const checkoutButton = el("button", { type: "button", disabled: cart.items.length === 0 }, "Check out");
-  checkoutButton.addEventListener("click", async () => {
-    checkoutButton.disabled = true;
-    try {
-      const order = await api(`/customers/${user.customerId}/checkout?restaurant_id=${restaurantId}`, { method: "POST" });
-      go(`#/order/${order.orderId}`);
-    } catch (err) {
-      // e.g. an item became unavailable: the cart is untouched, so the customer can fix it and retry
-      message.className = "error";
-      message.textContent = err.message;
-      checkoutButton.disabled = false;
-    }
-  });
-
-  view.replaceChildren(
-    el("h2", {}, "Your cart"),
-    el("p", {}, "From ", el("a", { href: `#/restaurant/${restaurantId}` }, restaurant.name)),
-    ...(lines.length ? lines : [el("p", { className: "muted" }, "Your cart is empty.")]),
-    el("p", {}, `Subtotal: ${money(cart.subtotal ?? 0)}`),
-    el("p", {}, el("strong", {}, `Total: ${money(cart.total ?? 0)}`)),
-    checkoutButton,
-    message,
-  );
-}
-
-// Orders --------------------------------------------------------------------
-function orderSummary(order) {
-  return el("div", {},
-    el("p", {}, el("a", { href: `#/restaurant/${order.restaurant_id}` }, order.restaurant_name)),
-    el("p", { className: "muted" }, `Status: ${order.status} · placed ${new Date(order.created_at).toLocaleString()}`),
-    el("p", { className: "muted" },
-      `Delivering to ${order.deliveryAddress.street}, ${order.deliveryAddress.city}, ${order.deliveryAddress.province} ${order.deliveryAddress.postal_code}`),
-    ...order.items.map(line => el("div", {}, `${line.quantity} × ${line.name} — ${money(line.price)} each`)),
-    el("p", {}, `Subtotal: ${money(order.subtotal)}`),
-    el("p", {}, el("strong", {}, `Total: ${money(order.total)}`)),
-  );
-}
-
-async function orderView(orderId) {
-  if (!requireLogin()) return;
-  const order = await api(`/orders/${orderId}`);
-  view.replaceChildren(
-    el("h2", {}, `Order #${order.orderId}`),
-    el("p", { className: "ok" }, "Your order was placed."),
-    orderSummary(order),
-    el("p", {}, el("a", { href: "#/orders" }, "All my orders")),
-  );
-}
-
-async function ordersView() {
-  const user = requireLogin();
-  if (!user) return;
-  const { orders } = await api(`/customers/${user.customerId}/orders`);
-  view.replaceChildren(
-    el("h2", {}, "My orders"),
-    ...(orders.length === 0 ? [el("p", { className: "muted" }, "No orders yet.")] :
-      orders.slice().reverse().map(order => el("div", { className: "card" },
-        el("a", { href: `#/order/${order.orderId}` }, `Order #${order.orderId}`),
-        el("div", { className: "muted" }, `${order.restaurant_name} · ${order.status} · ${money(order.total)}`)))),
-  );
-}
-
-// Register / sign in --------------------------------------------------------
-async function signIn(email, password) {
-  const { access_token } = await api("/auth/login", jsonRequest("POST", { email, password }));
-  store(TOKEN_KEY, access_token);
-  const me = await api("/auth/me");
-  store(USER_KEY, JSON.stringify(me));
-  renderNav();
-  let target = "#/";
-  try {
-    target = sessionStorage.getItem("pelmeni_return_to") || target;
-    sessionStorage.removeItem("pelmeni_return_to");
-  } catch (_) { /* ignore */ }
-  go(target.startsWith("#/login") || target.startsWith("#/register") ? "#/" : target);
-}
-
-function loginView() {
-  const message = el("p", { className: "error" });
-  const form = el("form", { className: "edit" },
-    field("Email", "email", "email", "", { required: true }),
-    field("Password", "password", "password", "", { required: true }),
-    el("button", { type: "submit" }, "Sign in"),
-  );
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const values = Object.fromEntries(new FormData(form));
-    try {
-      await signIn(values.email, values.password);
-    } catch (err) {
-      message.textContent = err.message;
-    }
-  });
-  view.replaceChildren(el("h2", {}, "Sign in"), form, message,
-    el("p", {}, "No account? ", el("a", { href: "#/register" }, "Register")));
-}
-
-function registerView() {
-  const message = el("p", { className: "error" });
-  const form = el("form", { className: "edit" },
-    field("Name", "name", "text", "", { required: true }),
-    field("Email", "email", "email", "", { required: true }),
-    field("Password (min 8 characters)", "password", "password", "", { required: true, minLength: 8 }),
-    field("Street", "street", "text", "", { required: true }),
-    field("City", "city", "text", "", { required: true }),
-    field("Province", "province", "text", "", { required: true }),
-    field("Postal code", "postal_code", "text", "", { required: true }),
-    field("Country", "country", "text", "", { required: true }),
-    el("button", { type: "submit" }, "Create account"),
-  );
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const values = Object.fromEntries(new FormData(form));
-    try {
-      await api("/customers", jsonRequest("POST", values));
-      await signIn(values.email, values.password);
-    } catch (err) {
-      message.textContent = err.message;
-    }
-  });
-  view.replaceChildren(el("h2", {}, "Register"), form, message,
-    el("p", {}, "Already registered? ", el("a", { href: "#/login" }, "Sign in")));
-}
-
-// Navigation bar ------------------------------------------------------------
-function renderNav() {
-  const nav = document.getElementById("nav");
-  const user = currentUser();
-  const links = [el("a", { href: "#/" }, "Restaurants"), el("a", { href: "#/new" }, "Add restaurant")];
-  if (user) {
-    links.push(
-      el("a", { href: "#/cart" }, "Cart"),
-      el("a", { href: "#/orders" }, "My orders"),
-      el("span", {}, `Signed in as ${user.name}`),
-      el("button", { type: "button", onclick: () => { signOut(); go("#/"); } }, "Sign out"),
-    );
-  } else {
-    links.push(el("a", { href: "#/login" }, "Sign in"), el("a", { href: "#/register" }, "Register"));
-  }
-  nav.replaceChildren(...links);
 }
 
 // Shared add/edit form for a menu item; onSave(data) may throw, which is shown inline
@@ -421,6 +271,199 @@ function itemForm(item, onSave) {
     }
   });
   return form;
+}
+
+// Cart page ----------------------------------------------------------------
+
+async function cartView(restaurantId) {
+  if (!PelmeniAuth.isLoggedIn()) {
+    location.hash = "#/login";
+    return;
+  }
+
+  const container = el("section");
+  container.append(el("h2", {}, "My Cart"));
+
+  view.replaceChildren(container);
+
+  try {
+    let cart = await getCart(restaurantId);
+
+    function renderCart() {
+      const itemsBox = el("div");
+
+      if (!cart.items || cart.items.length === 0) {
+        itemsBox.append(el("p", { className: "muted" }, "Your cart is empty."));
+      } else {
+        for (const item of cart.items) {
+          const itemBox = el("div", { className: "card" });
+
+          itemBox.append(
+            el("h3", {}, item.name),
+            el("p", {}, `$${item.price.toFixed(2)} each`),
+            el("p", {}, `Quantity: ${item.quantity}`),
+            el("p", {}, `Item total: $${(item.price * item.quantity).toFixed(2)}`)
+          );
+
+          const quantityInput = el("input", {
+            type: "number",
+            min: 1,
+            value: item.quantity
+          });
+
+          const updateButton = el("button", { type: "button" }, "Update quantity");
+
+          updateButton.addEventListener("click", async () => {
+            const quantity = Number(quantityInput.value);
+
+            if (!Number.isInteger(quantity) || quantity < 1) {
+              alert("Quantity must be at least 1.");
+              return;
+            }
+
+            try {
+              cart = await updateCartItem(
+                restaurantId,
+                item.menu_id,
+                item.menu_item_id,
+                quantity
+              );
+
+              renderCart();
+            } catch (err) {
+              alert(err.message);
+            }
+          });
+
+          const removeButton = el("button", { type: "button" }, "Remove");
+
+          removeButton.addEventListener("click", async () => {
+            try {
+              cart = await removeCartItem(
+                restaurantId,
+                item.menu_id,
+                item.menu_item_id
+              );
+
+              renderCart();
+            } catch (err) {
+              alert(err.message);
+            }
+          });
+
+          itemBox.append(quantityInput, updateButton, removeButton);
+          itemsBox.append(itemBox);
+        }
+      }
+
+      const totals = el("section", { className: "card" },
+        el("h3", {}, "Order Summary"),
+        el("p", {}, `Subtotal: $${cart.subtotal.toFixed(2)}`),
+        el("p", {}, `Total: $${cart.total.toFixed(2)}`)
+      );
+
+      const clearButton = el("button", { type: "button" }, "Clear Cart");
+
+      clearButton.addEventListener("click", async () => {
+        if (!confirm("Are you sure you want to clear your cart?")) return;
+
+        try {
+          cart = await clearCart(restaurantId);
+          renderCart();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      const checkoutButton = el("button", { type: "button" }, "Checkout");
+
+      checkoutButton.addEventListener("click", async () => {
+        if (!confirm("Place your order?")) return;
+
+        try {
+          const order = await checkoutCart(restaurantId);
+          alert("Order placed successfully!");
+          location.hash = "#/orders";
+        } catch (err) {
+          alert(err.message);
+        }
+      });      
+
+      container.replaceChildren(
+        el("h2", {}, "My Cart"),
+        itemsBox,
+        ...(cart.items?.length ? [totals, clearButton, checkoutButton] : [])
+      );
+    }
+
+    renderCart();
+
+  } catch (err) {
+    container.append(el("p", { className: "error" }, err.message));
+  }
+}
+
+// Orders page ----------------------------------------------------------------
+
+async function ordersView() {
+  if (!PelmeniAuth.isLoggedIn()) {
+    location.hash = "#/login";
+    return;
+  }
+
+  const container = el("section");
+  view.replaceChildren(
+    el("h2", {}, "My Orders"),
+    el("p", {}, "Loading orders...")
+  );
+
+  try {
+    const data = await getCustomerOrders();
+    const orders = data.orders || [];
+
+    if (orders.length === 0) {
+      container.append(
+        el("h2", {}, "My Orders"),
+        el("p", { className: "muted" }, "You haven't placed any orders yet.")
+      );
+    } else {
+      container.append(el("h2", {}, "My Orders"));
+
+      for (const order of orders) {
+        const orderCard = el("div", { className: "card" });
+
+        orderCard.append(
+          el("h3", {}, `Order #${order.orderId}`),
+          el("p", {}, `Status: ${order.status}`),
+          el("p", {}, `Total: $${order.total.toFixed(2)}`)
+        );
+
+                const placedDate = order.created_at
+          ? new Date(order.created_at).toLocaleString("en-CA", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            })
+          : "N/A";
+
+        orderCard.append(
+          el("p", {}, `Placed: ${placedDate}`)
+        );
+
+        container.append(orderCard);
+      }
+    }
+
+    view.replaceChildren(container);
+
+  } catch (err) {
+    view.replaceChildren(
+      el("h2", {}, "My Orders"),
+      el("p", { className: "error" }, err.message)
+    );
+  }
 }
 
 // Create / update restaurant ------------------------------------------------
@@ -465,19 +508,474 @@ async function formView(id) {
   });
 }
 
+// Customer registration and account management ------------------------------
+async function customerApi(path, options, token = sessionStorage.getItem(customerTokenKey)) {
+  const headers = new Headers(options?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  try {
+    return await api(path, { ...options, headers });
+  } catch (err) {
+    if (err.status === 401 && sessionStorage.getItem(customerTokenKey) === token) {
+      sessionStorage.removeItem(customerTokenKey);
+    }
+    throw err;
+  }
+}
+
+function customerLoginForm(email) {
+  const message = el("p", { className: "error", role: "alert" });
+  const form = el("form", { className: "edit" },
+    field("Email", "email", "email", email, { required: true, autocomplete: "username" }),
+    field("Password", "password", "password", "", { required: true, autocomplete: "current-password" }),
+    el("button", { type: "submit" }, "Sign in"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const session = await api("/auth/login", jsonRequest("POST", Object.fromEntries(new FormData(form))));
+      sessionStorage.setItem(customerTokenKey, session.access_token);
+      if (view.contains(form)) await route();
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
+}
+
+function customerRegistrationForm() {
+  const message = el("p", { className: "error" });
+  const form = el("form", { className: "edit" },
+    field("Name", "name", "text", "", { required: true }),
+    field("Email", "email", "email", "", { required: true }),
+    field("Password", "password", "password", "", { required: true, minLength: 8, autocomplete: "new-password" }),
+    field("Street", "street", "text", "", { required: true }),
+    field("City", "city", "text", "", { required: true }),
+    field("Province", "province", "text", "", { required: true }),
+    field("Postal code", "postal_code", "text", "", { required: true }),
+    field("Country", "country", "text", "", { required: true }),
+    el("button", { type: "submit" }, "Create account"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const saved = await api("/customers", jsonRequest("POST", Object.fromEntries(new FormData(form))));
+      if (view.contains(form)) showCustomerForms("Account created. Sign in to view your profile.", saved.email);
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
+}
+
+function editableCustomerField(customerId, label, key, value, type = "text") {
+  const display = el("span", { className: "account-value" }, value || "—");
+  const editButton = el("button", {
+    type: "button",
+    className: "edit-icon",
+    title: `Edit ${label.toLowerCase()}`,
+    "aria-label": `Edit ${label.toLowerCase()}`,
+  }, "✎");
+  const input = el("input", {
+    name: key, type, value: value ?? "", required: true,
+    "aria-label": label,
+  });
+  const message = el("span", { className: "error", role: "alert" });
+  const cancelButton = el("button", { type: "button", className: "secondary" }, "Cancel");
+  const editor = el("form", { className: "inline-editor", hidden: true },
+    input,
+    el("button", { type: "submit" }, "Save"),
+    cancelButton,
+    message,
+  );
+
+  editButton.addEventListener("click", () => {
+    display.hidden = true;
+    editButton.hidden = true;
+    editor.hidden = false;
+    input.focus();
+  });
+  cancelButton.addEventListener("click", () => {
+    input.value = value ?? "";
+    message.textContent = "";
+    editor.hidden = true;
+    display.hidden = false;
+    editButton.hidden = false;
+  });
+  editor.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await customerApi(`/customers/${customerId}`, jsonRequest("PATCH", { [key]: input.value }));
+      if (view.contains(editor)) await route();
+    } catch (err) {
+      if (err.status === 401 && view.contains(editor)) {
+        showCustomerForms("Your session expired. Sign in again.");
+        return;
+      }
+      message.textContent = err.message;
+    }
+  });
+
+  return el("div", { className: "account-field" },
+    el("span", { className: "account-label" }, `${label}:`), display, editButton, editor,
+  );
+}
+
+function showCustomerForms(message = "", email = "") {
+  view.replaceChildren(
+    el("h2", {}, "Customer accounts"),
+    ...(message ? [el("p", { role: "status" }, message)] : []),
+    el("h3", {}, "Sign in"), customerLoginForm(email),
+    el("h3", {}, "Create an account"), customerRegistrationForm(),
+  );
+}
+
+async function customerView() {
+  const token = sessionStorage.getItem(customerTokenKey);
+  if (!token) {
+    showCustomerForms();
+    return;
+  }
+  const requestedHash = location.hash;
+  try {
+    const { customerId } = await customerApi("/auth/me", undefined, token);
+    const customer = await customerApi(`/customers/${customerId}`, undefined, token);
+    if (location.hash === requestedHash && sessionStorage.getItem(customerTokenKey) === token) {
+      showCustomer(customer);
+    }
+  } catch (err) {
+    if (location.hash !== requestedHash) return;
+    if (err.status !== 401) throw err;
+    if (!sessionStorage.getItem(customerTokenKey)) showCustomerForms("Your session expired. Sign in again.");
+  }
+}
+
+function showCustomer(customer) {
+  const id = customer.customerId;
+  const address = customer.deliveryAddress;
+  const profile = el("section", { className: "account-details" },
+    editableCustomerField(id, "Name", "name", customer.name),
+    editableCustomerField(id, "Email", "email", customer.email, "email"),
+    el("h4", {}, "Delivery address"),
+    editableCustomerField(id, "Street", "street", address.street),
+    editableCustomerField(id, "City", "city", address.city),
+    editableCustomerField(id, "Province", "province", address.province),
+    editableCustomerField(id, "Postal code", "postal_code", address.postal_code),
+    editableCustomerField(id, "Country", "country", address.country),
+  );
+  const statusText = el("p", { className: customer.status ? "ok" : "muted" },
+    customer.status ? "Account active" : "Account deactivated");
+  const actions = [];
+  if (customer.status) {
+    const deactivateButton = el("button", { type: "button" }, "Deactivate account");
+    deactivateButton.addEventListener("click", async () => {
+      try {
+        await customerApi(`/customers/${id}/deactivate`, { method: "PATCH" });
+        sessionStorage.removeItem(customerTokenKey);
+        if (view.contains(deactivateButton)) showCustomerForms("Your account was deactivated.");
+      } catch (err) {
+        if (err.status === 401 && view.contains(deactivateButton)) {
+          showCustomerForms("Your session expired. Sign in again.");
+          return;
+        }
+        statusText.className = "error";
+        statusText.textContent = err.message;
+      }
+    });
+    actions.push(deactivateButton);
+  }
+  const logoutButton = el("button", { type: "button" }, "Log out");
+  logoutButton.addEventListener("click", () => {
+    sessionStorage.removeItem(customerTokenKey);
+    showCustomerForms();
+  });
+  actions.push(logoutButton);
+  view.replaceChildren(
+    el("h2", {}, `Customer account #${customer.customerId}`),
+    statusText,
+    el("h3", {}, "Profile"),
+    profile,
+    el("div", { className: "customer-actions" }, ...actions),
+  );
+}
+
+//Authentication
+
+
+// Update navigation based on login status
+function updateAuthNavigation() {
+  const loggedIn = PelmeniAuth.isLoggedIn();
+ 
+ 
+  document.getElementById("login-link").hidden = loggedIn;
+  document.getElementById("account-link").hidden = !loggedIn;
+  document.getElementById("logout-button").hidden = !loggedIn;
+ }
+ 
+ 
+ 
+ 
+ // Display the login page
+ function loginView() {
+  if (PelmeniAuth.isLoggedIn()) {
+      location.hash = "#/account";
+      return;
+  }
+ 
+ 
+  const container = document.createElement("section");
+  container.className = "auth-card";
+ 
+ 
+  const title = document.createElement("h2");
+  title.textContent = "Welcome back!";
+ 
+ 
+  const description = document.createElement("p");
+  description.textContent = "Sign in to your Pelmeni account.";
+ 
+ 
+  const form = document.createElement("form");
+  form.className = "auth-form";
+ 
+ 
+  // Email input
+  const emailLabel = document.createElement("label");
+  emailLabel.textContent = "Email";
+ 
+ 
+  const emailInput = document.createElement("input");
+  emailInput.type = "email";
+  emailInput.name = "email";
+  emailInput.required = true;
+  emailInput.autocomplete = "username";
+ 
+ 
+  emailLabel.appendChild(emailInput);
+ 
+ 
+  // Password input
+  const passwordLabel = document.createElement("label");
+  passwordLabel.textContent = "Password";
+ 
+ 
+  const passwordInput = document.createElement("input");
+  passwordInput.type = "password";
+  passwordInput.name = "password";
+  passwordInput.required = true;
+  passwordInput.autocomplete = "current-password";
+ 
+ 
+  passwordLabel.appendChild(passwordInput);
+ 
+ 
+  // Login button
+  const loginButton = document.createElement("button");
+  loginButton.type = "submit";
+  loginButton.textContent = "Login";
+ 
+ 
+  // Error message
+  const message = document.createElement("p");
+  message.className = "error";
+  message.setAttribute("role", "alert");
+ 
+ 
+  form.append(
+      emailLabel,
+      passwordLabel,
+      loginButton,
+      message
+  );
+ 
+ 
+  container.append(title, description, form);
+ 
+ 
+  // Display the login page
+  document.getElementById("view").replaceChildren(container);
+ 
+ 
+  // Handle login submission
+  form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+ 
+ 
+      message.textContent = "";
+      loginButton.disabled = true;
+      loginButton.textContent = "Logging in...";
+ 
+ 
+      try {
+          await PelmeniAuth.login(
+              emailInput.value,
+              passwordInput.value
+          );
+ 
+ 
+          // Verify token by retrieving the customer
+          await PelmeniAuth.getCurrentUser();
+ 
+ 
+          updateAuthNavigation();
+ 
+ 
+          location.hash = "#/account";
+ 
+ 
+      } catch (error) {
+          message.textContent = error.message;
+ 
+ 
+      } finally {
+          loginButton.disabled = false;
+          loginButton.textContent = "Login";
+      }
+  });
+ }
+ 
+ 
+ 
+ 
+ // Display the customer's information after logging in
+ async function accountView() {
+  if (!PelmeniAuth.isLoggedIn()) {
+      location.hash = "#/login";
+      return;
+  }
+ 
+ 
+  const container = document.createElement("section");
+  container.className = "auth-card";
+ 
+ 
+  const loading = document.createElement("p");
+  loading.textContent = "Loading account...";
+ 
+ 
+  container.appendChild(loading);
+  document.getElementById("view").replaceChildren(container);
+ 
+ 
+  try {
+      const customer = await PelmeniAuth.getCurrentUser();
+ 
+ 
+      // Check whether the user navigated away
+      if (location.hash !== "#/account") {
+          return;
+      }
+ 
+ 
+      const title = document.createElement("h2");
+      title.textContent = "My Account";
+ 
+ 
+      const name = document.createElement("p");
+      name.textContent = `Name: ${customer.name}`;
+ 
+ 
+      const email = document.createElement("p");
+      email.textContent = `Email: ${customer.email}`;
+ 
+ 
+      const customerId = document.createElement("p");
+      customerId.textContent = `Customer ID: ${customer.customerId}`;
+ 
+ 
+      const success = document.createElement("p");
+      success.className = "ok";
+      success.textContent = "You are successfully authenticated!";
+ 
+ 
+      const restaurantsLink = document.createElement("a");
+      restaurantsLink.href = "#/";
+      restaurantsLink.textContent = "Browse restaurants";
+
+      const ordersLink = document.createElement("a");
+      ordersLink.href = "#/orders";
+      ordersLink.textContent = "My Orders";
+      
+
+      const accountLinks = document.createElement("div");
+      accountLinks.className = "account-links";
+      accountLinks.append(restaurantsLink, ordersLink);
+ 
+ 
+      container.replaceChildren(
+          title,
+          name,
+          email,
+          customerId,
+          success,
+          accountLinks
+      );
+ 
+ 
+  } catch (error) {
+      const message = document.createElement("p");
+      message.className = "error";
+      message.textContent = error.message;
+ 
+ 
+      container.replaceChildren(message);
+ 
+ 
+      if (!PelmeniAuth.isLoggedIn()) {
+          updateAuthNavigation();
+          location.hash = "#/login";
+      }
+  }
+ }
+ 
+ 
+ 
+ 
+ // Logout
+ function logoutUser() {
+  PelmeniAuth.logout();
+ 
+ 
+  updateAuthNavigation();
+ 
+ 
+  // Return to the restaurant list
+  if (location.hash === "#/") {
+      route();
+  } else {
+      location.hash = "#/";
+  }
+ }
+ 
+ 
+ 
+ 
+ // Connect the logout button
+ document.getElementById("logout-button")
+  .addEventListener("click", logoutUser);
+ 
+ 
+ // Set navigation visibility when the application starts
+ updateAuthNavigation();
+ 
+ 
+ window.addEventListener("authchange", updateAuthNavigation);
+ 
+
 // Router --------------------------------------------------------------------
 async function route() {
-  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  const parts = location.hash.replace(/^#\//, "").split("/").filter(Boolean);
   try {
     if (parts.length === 0) await listView();
-    else if (parts[0] === "login") loginView();
-    else if (parts[0] === "register") registerView();
-    else if (parts[0] === "cart") await cartView(parts[1]);
-    else if (parts[0] === "orders") await ordersView();
-    else if (parts[0] === "order") await orderView(parts[1]);
     else if (parts[0] === "new") await formView(null);
+    else if (parts[0] === "customers") await customerView();
     else if (parts[0] === "restaurant" && parts[2] === "edit") await formView(parts[1]);
     else if (parts[0] === "restaurant") await detailView(parts[1]);
+    else if (parts[0] === "login") loginView(); //login
+    else if (parts[0] === "account") await accountView();
+    else if (parts[0] === "cart") await cartView(parts[1]);
+    else if (parts[0] === "orders") await ordersView();
     else view.replaceChildren(el("p", {}, "Page not found."));
   } catch (err) {
     showError(err);
@@ -485,5 +983,5 @@ async function route() {
 }
 
 window.addEventListener("hashchange", route);
-renderNav();
 route();
+

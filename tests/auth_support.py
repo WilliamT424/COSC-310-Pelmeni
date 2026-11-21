@@ -11,9 +11,7 @@ CUSTOMERS_PATH = "/customers"
 
 REGISTER_PATH = "/auth/register"
 PUBLIC_AUTH_PATHS = {REGISTER_PATH, LOGIN_PATH, CUSTOMERS_PATH}
-CUSTOMER = "customer"
 MANAGER = "manager"
-DEFAULT_ROLE = CUSTOMER
 
 PASSWORD = "S3cure-pass!"
 
@@ -76,12 +74,6 @@ PUBLIC_READ_PATHS = [
     "/restaurants/101/menus/1/items",
     "/restaurants/101/menus/1/items/1",
 ]
-
-def register(client, email, password=PASSWORD, role=None):
-    body = {"email": email, "password": password}
-    if role is not None:
-        body["role"] = role
-    return client.post(REGISTER_PATH, json=body)
 
 def login(client, email, password=PASSWORD):
     return client.post(LOGIN_PATH, json={"email": email, "password": password})

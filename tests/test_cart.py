@@ -15,10 +15,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-import app.services.menu_services as menu_services
+from app.repositories import menu_repositories
 import app.services.restaurant_services as restaurant_services
 import app.services.cart_services as cart_services
-import app.repositories.cart_repository as cart_repository
 from app.dependencies.dependencies import require_customer_ownership
 
 
@@ -54,11 +53,20 @@ def client(monkeypatch, tmp_path, sample_restaurants, sample_menu_catalog):
     cart_file = tmp_path / "carts.json"
     cart_file.write_text("[]")
 
+    def fake_customer_ownership(customer_id: int):
+        return {"customerId": customer_id}
+
+    monkeypatch.setitem(
+        app.dependency_overrides,
+        require_customer_ownership,
+        fake_customer_ownership,
+    )
+
     monkeypatch.setattr(
         restaurant_services, "read_json_file", lambda: sample_restaurants
     )
     monkeypatch.setattr(
-        menu_services, "read_menus_file", lambda: sample_menu_catalog
+        menu_repositories, "read_menus_file", lambda: sample_menu_catalog
     )
     monkeypatch.setattr(
         cart_services,
@@ -86,14 +94,8 @@ def client(monkeypatch, tmp_path, sample_restaurants, sample_menu_catalog):
         ) + 1,
     )
 
-    # Cart routes require the signed-in customer to own the cart. These tests are about cart
-    # behaviour, so skip the token; ownership itself is covered by test_authorization.py.
-    app.dependency_overrides[require_customer_ownership] = lambda customer_id: {"customerId": customer_id}
-    try:
-        with TestClient(app) as test_client:
-            yield test_client
-    finally:
-        app.dependency_overrides.pop(require_customer_ownership, None)
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 def cart_url(customer_id):
