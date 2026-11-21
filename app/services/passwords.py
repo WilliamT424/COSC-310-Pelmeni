@@ -1,5 +1,4 @@
 from pwdlib import PasswordHash
-from app.repositories.customer_repositories import read_all_customers_json_file
 
 password_hash = PasswordHash.recommended()
 def hash_password(password: str) -> str:

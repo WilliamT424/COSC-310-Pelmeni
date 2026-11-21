@@ -2,24 +2,46 @@ from app.repositories.cart_repository import read_carts_file, write_carts_file, 
 from app.services.menu_services import get_menu_item
 from app.services.customer_services import retrieve_customer
 
-def create_cart(customer_id: int, restaurant_id: int | None = None):
+
+def _is_active_customer(customer_id: int) -> bool:
     customer = retrieve_customer(customer_id)
+    return customer is not None and bool(customer.status)
 
-    if customer is None or not customer.status:
-        return None
 
-    carts = read_carts_file()
-
+def _find_cart(carts: list[dict], customer_id: int, restaurant_id: int | None) -> dict | None:
     for cart in carts:
         if cart["customer_id"] == customer_id and cart["restaurant_id"] == restaurant_id:
             return cart
+    return None
 
-    new_cart = {
+
+def _find_cart_item(cart: dict, menu_id: int, item_id: int) -> dict | None:
+    for cart_item in cart["items"]:
+        if cart_item["menu_item_id"] == item_id and cart_item["menu_id"] == menu_id:
+            return cart_item
+    return None
+
+
+def _new_cart(customer_id: int, restaurant_id: int | None) -> dict:
+    return {
         "id": generate_cart_id(),
         "customer_id": customer_id,
         "restaurant_id": restaurant_id,
         "items": []
     }
+
+
+def create_cart(customer_id: int, restaurant_id: int | None = None):
+    if not _is_active_customer(customer_id):
+        return None
+
+    carts = read_carts_file()
+
+    cart = _find_cart(carts, customer_id, restaurant_id)
+    if cart is not None:
+        return cart
+
+    new_cart = _new_cart(customer_id, restaurant_id)
     carts.append(new_cart)
     write_carts_file(carts)
     return new_cart
@@ -38,12 +60,7 @@ def get_customer_cart(customer_id: int, restaurant_id: int):
     }
 
 def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id: int, quantity: int):
-    customer = retrieve_customer(customer_id)
-
-    if quantity <= 0:
-        return None
-
-    if customer is None or not customer.status:
+    if quantity <= 0 or not _is_active_customer(customer_id):
         return None
 
     item = get_menu_item(restaurant_id, menu_id, item_id)
@@ -52,27 +69,17 @@ def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id
         return None
 
     carts = read_carts_file()
-    cart = None
-
-    for existing_cart in carts:
-        if existing_cart["customer_id"] == customer_id and existing_cart["restaurant_id"] == restaurant_id:
-            cart = existing_cart
-            break
+    cart = _find_cart(carts, customer_id, restaurant_id)
 
     if cart is None:
-        cart = {
-            "id": generate_cart_id(),
-            "customer_id": customer_id,
-            "restaurant_id": restaurant_id,
-            "items": []
-        }
+        cart = _new_cart(customer_id, restaurant_id)
         carts.append(cart)
 
-    for cart_item in cart["items"]:
-        if cart_item["menu_item_id"] == item_id and cart_item["menu_id"] == menu_id:
-            cart_item["quantity"] += quantity
-            write_carts_file(carts)
-            return cart
+    cart_item = _find_cart_item(cart, menu_id, item_id)
+    if cart_item is not None:
+        cart_item["quantity"] += quantity
+        write_carts_file(carts)
+        return cart
 
     cart["items"].append({
         "menu_item_id": item_id,
@@ -85,65 +92,56 @@ def add_item_to_cart(customer_id: int, restaurant_id: int, menu_id: int, item_id
     write_carts_file(carts)
 
     return {
-    **cart,
-    **calculate_cart_totals(cart)
+        **cart,
+        **calculate_cart_totals(cart)
     }
 
 def update_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id: int, quantity: int):
-    customer = retrieve_customer(customer_id)
-
-    if quantity <= 0:
+    if quantity <= 0 or not _is_active_customer(customer_id):
         return None
 
-    if customer is None or not customer.status:
-        return None
-
-    
     carts = read_carts_file()
+    cart = _find_cart(carts, customer_id, restaurant_id)
+    if cart is None:
+        return None
 
-    for cart in carts:
-        if cart["customer_id"] == customer_id and cart["restaurant_id"] == restaurant_id:
-            for cart_item in cart["items"]:
-                if cart_item["menu_item_id"] == item_id and cart_item["menu_id"] == menu_id:
-                    cart_item["quantity"] = quantity
-                    write_carts_file(carts)
-                    return cart
+    cart_item = _find_cart_item(cart, menu_id, item_id)
+    if cart_item is None:
+        return None
 
-    return None
+    cart_item["quantity"] = quantity
+    write_carts_file(carts)
+    return cart
 
 def remove_cart_item(customer_id: int, restaurant_id: int, menu_id: int, item_id: int):
-    customer = retrieve_customer(customer_id)
-
-    if customer is None or not customer.status:
+    if not _is_active_customer(customer_id):
         return None
 
     carts = read_carts_file()
+    cart = _find_cart(carts, customer_id, restaurant_id)
+    if cart is None:
+        return None
 
-    for cart in carts:
-        if cart["customer_id"] == customer_id and cart["restaurant_id"] == restaurant_id:
-            for cart_item in cart["items"]:
-                if cart_item["menu_item_id"] == item_id and cart_item["menu_id"] == menu_id:
-                    cart["items"].remove(cart_item)
-                    write_carts_file(carts)
-                    return cart
+    cart_item = _find_cart_item(cart, menu_id, item_id)
+    if cart_item is None:
+        return None
 
-    return None
+    cart["items"].remove(cart_item)
+    write_carts_file(carts)
+    return cart
 
 def clear_cart(customer_id: int, restaurant_id: int):
-    customer = retrieve_customer(customer_id)
-
-    if customer is None or not customer.status:
+    if not _is_active_customer(customer_id):
         return None
 
     carts = read_carts_file()
+    cart = _find_cart(carts, customer_id, restaurant_id)
+    if cart is None:
+        return None
 
-    for cart in carts:
-        if cart["customer_id"] == customer_id and cart["restaurant_id"] == restaurant_id:
-            cart["items"] = []
-            write_carts_file(carts)
-            return cart
-
-    return None
+    cart["items"] = []
+    write_carts_file(carts)
+    return cart
 
 def calculate_cart_totals(cart):
     subtotal = sum(
@@ -155,4 +153,3 @@ def calculate_cart_totals(cart):
         "subtotal": round(subtotal, 2),
         "total": round(subtotal, 2)
     }
-

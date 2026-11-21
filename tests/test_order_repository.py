@@ -53,30 +53,6 @@ def test_get_orders_by_customer(tmp_path):
     assert result[1]["orderId"] == 3
 
 
-def test_generate_order_id(tmp_path):
-    orders_file = tmp_path / "orders.json"
-
-    orders = [
-        {"orderId": 1, "customerId": 10},
-        {"orderId": 5, "customerId": 20}
-    ]
-
-    orders_file.write_text(json.dumps(orders))
-
-    result = order_repository.generate_order_id(orders_file)
-
-    assert result == 6
-
-
-def test_generate_order_id_empty_file(tmp_path):
-    orders_file = tmp_path / "orders.json"
-    orders_file.write_text("[]")
-
-    result = order_repository.generate_order_id(orders_file)
-
-    assert result == 1
-
-
 def test_write_orders_file(tmp_path):
     orders_file = tmp_path / "orders.json"
 

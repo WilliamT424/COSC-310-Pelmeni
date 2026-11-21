@@ -1,4 +1,3 @@
-from pwdlib import PasswordHash
 import jwt
 import os
 from app.repositories.customer_repositories import read_all_customers_json_file

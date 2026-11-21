@@ -1,6 +1,6 @@
 import pytest
 import json
-from app.schemas.customer import Address, CustomerCreate, Customer
+from app.schemas.customer import CustomerCreate, Customer
 from app.services import customer_services
 from app.repositories import customer_repositories
 
