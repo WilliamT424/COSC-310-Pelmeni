@@ -40,7 +40,25 @@ Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
+
 ```
+## Environment Configuration (JWT Authentication)
+
+Create a local environment file by copying .env.example:
+
+```bash
+cp .env.example .env
+
+```
+Generate a secure secret key:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+
+```
+
+Open .env and replace replace_with_your_own_secret_key with the generated key:
+JWT_SECRET_KEY=your_generated_key_here
 
 ## Starting the Application
 
