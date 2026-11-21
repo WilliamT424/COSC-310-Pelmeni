@@ -11,8 +11,17 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
-async function api(path, options) {
-  const response = await fetch(path, options);
+async function api(path, options = {}) {
+   const headers = new Headers(options.headers || {});
+
+   if (PelmeniAuth.isLoggedIn()) {
+     headers.set("Authorization", `Bearer ${PelmeniAuth.getToken()}`);
+   }
+   const response = await fetch(path, {
+     ...options,
+     headers
+   });
+  
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -390,6 +399,260 @@ function showCustomer(customer) {
   );
 }
 
+//Authentication
+
+
+// Update navigation based on login status
+function updateAuthNavigation() {
+  const loggedIn = PelmeniAuth.isLoggedIn();
+ 
+ 
+  document.getElementById("login-link").hidden = loggedIn;
+  document.getElementById("account-link").hidden = !loggedIn;
+  document.getElementById("logout-button").hidden = !loggedIn;
+ }
+ 
+ 
+ 
+ 
+ // Display the login page
+ function loginView() {
+  if (PelmeniAuth.isLoggedIn()) {
+      location.hash = "#/account";
+      return;
+  }
+ 
+ 
+  const container = document.createElement("section");
+  container.className = "auth-card";
+ 
+ 
+  const title = document.createElement("h2");
+  title.textContent = "Welcome back!";
+ 
+ 
+  const description = document.createElement("p");
+  description.textContent = "Sign in to your Pelmeni account.";
+ 
+ 
+  const form = document.createElement("form");
+  form.className = "auth-form";
+ 
+ 
+  // Email input
+  const emailLabel = document.createElement("label");
+  emailLabel.textContent = "Email";
+ 
+ 
+  const emailInput = document.createElement("input");
+  emailInput.type = "email";
+  emailInput.name = "email";
+  emailInput.required = true;
+  emailInput.autocomplete = "username";
+ 
+ 
+  emailLabel.appendChild(emailInput);
+ 
+ 
+  // Password input
+  const passwordLabel = document.createElement("label");
+  passwordLabel.textContent = "Password";
+ 
+ 
+  const passwordInput = document.createElement("input");
+  passwordInput.type = "password";
+  passwordInput.name = "password";
+  passwordInput.required = true;
+  passwordInput.autocomplete = "current-password";
+ 
+ 
+  passwordLabel.appendChild(passwordInput);
+ 
+ 
+  // Login button
+  const loginButton = document.createElement("button");
+  loginButton.type = "submit";
+  loginButton.textContent = "Login";
+ 
+ 
+  // Error message
+  const message = document.createElement("p");
+  message.className = "error";
+  message.setAttribute("role", "alert");
+ 
+ 
+  form.append(
+      emailLabel,
+      passwordLabel,
+      loginButton,
+      message
+  );
+ 
+ 
+  container.append(title, description, form);
+ 
+ 
+  // Display the login page
+  document.getElementById("view").replaceChildren(container);
+ 
+ 
+  // Handle login submission
+  form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+ 
+ 
+      message.textContent = "";
+      loginButton.disabled = true;
+      loginButton.textContent = "Logging in...";
+ 
+ 
+      try {
+          await PelmeniAuth.login(
+              emailInput.value,
+              passwordInput.value
+          );
+ 
+ 
+          // Verify token by retrieving the customer
+          await PelmeniAuth.getCurrentUser();
+ 
+ 
+          updateAuthNavigation();
+ 
+ 
+          location.hash = "#/account";
+ 
+ 
+      } catch (error) {
+          message.textContent = error.message;
+ 
+ 
+      } finally {
+          loginButton.disabled = false;
+          loginButton.textContent = "Login";
+      }
+  });
+ }
+ 
+ 
+ 
+ 
+ // Display the customer's information after logging in
+ async function accountView() {
+  if (!PelmeniAuth.isLoggedIn()) {
+      location.hash = "#/login";
+      return;
+  }
+ 
+ 
+  const container = document.createElement("section");
+  container.className = "auth-card";
+ 
+ 
+  const loading = document.createElement("p");
+  loading.textContent = "Loading account...";
+ 
+ 
+  container.appendChild(loading);
+  document.getElementById("view").replaceChildren(container);
+ 
+ 
+  try {
+      const customer = await PelmeniAuth.getCurrentUser();
+ 
+ 
+      // Check whether the user navigated away
+      if (location.hash !== "#/account") {
+          return;
+      }
+ 
+ 
+      const title = document.createElement("h2");
+      title.textContent = "My Account";
+ 
+ 
+      const name = document.createElement("p");
+      name.textContent = `Name: ${customer.name}`;
+ 
+ 
+      const email = document.createElement("p");
+      email.textContent = `Email: ${customer.email}`;
+ 
+ 
+      const customerId = document.createElement("p");
+      customerId.textContent = `Customer ID: ${customer.customerId}`;
+ 
+ 
+      const success = document.createElement("p");
+      success.className = "ok";
+      success.textContent = "You are successfully authenticated!";
+ 
+ 
+      const restaurantsLink = document.createElement("a");
+      restaurantsLink.href = "#/";
+      restaurantsLink.textContent = "Browse restaurants";
+ 
+ 
+      container.replaceChildren(
+          title,
+          name,
+          email,
+          customerId,
+          success,
+          restaurantsLink
+      );
+ 
+ 
+  } catch (error) {
+      const message = document.createElement("p");
+      message.className = "error";
+      message.textContent = error.message;
+ 
+ 
+      container.replaceChildren(message);
+ 
+ 
+      if (!PelmeniAuth.isLoggedIn()) {
+          updateAuthNavigation();
+          location.hash = "#/login";
+      }
+  }
+ }
+ 
+ 
+ 
+ 
+ // Logout
+ function logoutUser() {
+  PelmeniAuth.logout();
+ 
+ 
+  updateAuthNavigation();
+ 
+ 
+  // Return to the restaurant list
+  if (location.hash === "#/") {
+      route();
+  } else {
+      location.hash = "#/";
+  }
+ }
+ 
+ 
+ 
+ 
+ // Connect the logout button
+ document.getElementById("logout-button")
+  .addEventListener("click", logoutUser);
+ 
+ 
+ // Set navigation visibility when the application starts
+ updateAuthNavigation();
+ 
+ 
+ window.addEventListener("authchange", updateAuthNavigation);
+ 
+
 // Router --------------------------------------------------------------------
 async function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
@@ -399,6 +662,8 @@ async function route() {
     else if (parts[0] === "customers") await customerView();
     else if (parts[0] === "restaurant" && parts[2] === "edit") await formView(parts[1]);
     else if (parts[0] === "restaurant") await detailView(parts[1]);
+    else if (parts[0] === "login") loginView(); //login
+    else if (parts[0] === "account") await accountView();
     else view.replaceChildren(el("p", {}, "Page not found."));
   } catch (err) {
     showError(err);
@@ -407,3 +672,4 @@ async function route() {
 
 window.addEventListener("hashchange", route);
 route();
+
