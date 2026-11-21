@@ -7,7 +7,7 @@ from app.services.menu_services import list_menus_for_restaurant, list_menu_item
 from app.schemas.menu import menuItem, MenuItemCreate, MenuItemUpdate
 from app.schemas.restaurant import Restaurant, RestaurantCreate, RestaurantUpdate
 from app.schemas.customer import Customer, CustomerCreate, CustomerUpdate
-from services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
+from app.services.customer_services import deactivate_customer, register_new_customer, retrieve_customer, update_customer
 from app.services.auth_services import authenticate_user, create_access_token
 from fastapi import Depends
 from app.dependencies.dependencies import get_current_user, require_customer_ownership

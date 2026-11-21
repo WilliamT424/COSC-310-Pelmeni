@@ -4,3 +4,4 @@ pytest
 uvicorn
 PyJWT
 pwdlib[argon2]
+python-dotenv

@@ -5,6 +5,7 @@ from app.repositories.customer_repositories import read_all_customers_json_file
 from datetime import datetime, timedelta, timezone
 
 from app.services.passwords import verify_password
+from dotenv import load_dotenv
 
 
 def get_customer_by_email (email: str):
@@ -34,6 +35,7 @@ def authenticate_user(email: str, password: str):
 
     return customer
 
+load_dotenv()
 
 SECRET_KEY = os.environ["JWT_SECRET_KEY"]
 
