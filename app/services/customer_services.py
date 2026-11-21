@@ -1,5 +1,6 @@
 from schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
 from repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
+from app.services.passwords import hash_password
 
 
 def create_customer(customerData: CustomerCreate, address: Address, status: bool = True) -> Customer:
@@ -32,8 +33,9 @@ def register_new_customer(customer: CustomerCreate):
     
     delivery_address = create_address(customer.street, customer.city, customer.province, customer.postal_code, customer.country)
     customer_data = create_customer(customer, delivery_address)
-    
-    write_customer_json_file(customer_data.customerId, customer_data)
+    saved_data = customer_data.model_dump()
+    saved_data["hashed_password"] = hash_password(customer.password)
+    write_customer_json_file(customer_data.customerId, saved_data)
     return customer_data
 
 
