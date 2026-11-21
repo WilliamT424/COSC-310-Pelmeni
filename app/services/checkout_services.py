@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from app.repositories.cart_repository import get_cart
-from app.repositories.order_repositories import read_orders_file, write_orders_file
+from app.repositories.order_repository import read_orders_file, write_orders_file
 from app.schemas.order import Order
 from app.services.cart_services import calculate_cart_totals, clear_cart
 from app.services.customer_services import retrieve_customer

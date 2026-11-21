@@ -6,7 +6,7 @@ from app.repositories import customer_repositories
 
 @pytest.fixture
 def sample_customer():
-    return CustomerCreate(name="Test Customer", email="test@example.com", street="123 Test Street", city="Kelowna", province="BC", postal_code="V1Y 1A1", country="Canada")
+    return CustomerCreate(name="Test Customer", email="test@example.com", password="TestPassword123!", street="123 Test Street", city="Kelowna", province="BC", postal_code="V1Y 1A1", country="Canada")
 
 @pytest.fixture
 def mock_customer_repository(monkeypatch):

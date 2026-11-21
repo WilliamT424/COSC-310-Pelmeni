@@ -19,6 +19,7 @@ import app.services.menu_services as menu_services
 import app.services.restaurant_services as restaurant_services
 import app.services.cart_services as cart_services
 import app.repositories.cart_repository as cart_repository
+from app.dependencies.dependencies import require_customer_ownership
 
 
 
@@ -52,6 +53,15 @@ def client(monkeypatch, tmp_path, sample_restaurants, sample_menu_catalog):
     """Use isolated sample data for cart API requests."""
     cart_file = tmp_path / "carts.json"
     cart_file.write_text("[]")
+
+    def fake_customer_ownership(customer_id: int):
+        return {"customerId": customer_id}
+
+    monkeypatch.setitem(
+        app.dependency_overrides,
+        require_customer_ownership,
+        fake_customer_ownership,
+    )
 
     monkeypatch.setattr(
         restaurant_services, "read_json_file", lambda: sample_restaurants

@@ -21,3 +21,7 @@ class Order(BaseModel):
     total: float = Field(ge=0)
     status: str
     created_at: str = Field(description="UTC ISO-8601 timestamp of when the order was created")
+
+
+class OrdersResponse(BaseModel):
+    orders: list[Order]
