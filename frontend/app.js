@@ -1,4 +1,5 @@
 const view = document.getElementById("view");
+const customerTokenKey = "pelmeniCustomerToken";
 
 // Small helpers -------------------------------------------------------------
 function el(tag, props = {}, ...children) {
@@ -19,7 +20,9 @@ async function api(path, options) {
       if (typeof body.detail === "string") detail = body.detail;
       else if (Array.isArray(body.detail)) detail = body.detail.map(d => d.msg).join(", ");
     } catch (_) { /* non-JSON error body */ }
-    throw new Error(`${response.status}: ${detail}`);
+    const error = new Error(`${response.status}: ${detail}`);
+    error.status = response.status;
+    throw error;
   }
   return response.json();
 }
@@ -195,12 +198,205 @@ async function formView(id) {
   });
 }
 
+// Customer registration and account management ------------------------------
+async function customerApi(path, options, token = sessionStorage.getItem(customerTokenKey)) {
+  const headers = new Headers(options?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  try {
+    return await api(path, { ...options, headers });
+  } catch (err) {
+    if (err.status === 401 && sessionStorage.getItem(customerTokenKey) === token) {
+      sessionStorage.removeItem(customerTokenKey);
+    }
+    throw err;
+  }
+}
+
+function customerLoginForm(email) {
+  const message = el("p", { className: "error", role: "alert" });
+  const form = el("form", { className: "edit" },
+    field("Email", "email", "email", email, { required: true, autocomplete: "username" }),
+    field("Password", "password", "password", "", { required: true, autocomplete: "current-password" }),
+    el("button", { type: "submit" }, "Sign in"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const session = await api("/auth/login", jsonRequest("POST", Object.fromEntries(new FormData(form))));
+      sessionStorage.setItem(customerTokenKey, session.access_token);
+      if (view.contains(form)) await route();
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
+}
+
+function customerRegistrationForm() {
+  const message = el("p", { className: "error" });
+  const form = el("form", { className: "edit" },
+    field("Name", "name", "text", "", { required: true }),
+    field("Email", "email", "email", "", { required: true }),
+    field("Password", "password", "password", "", { required: true, minLength: 8, autocomplete: "new-password" }),
+    field("Street", "street", "text", "", { required: true }),
+    field("City", "city", "text", "", { required: true }),
+    field("Province", "province", "text", "", { required: true }),
+    field("Postal code", "postal_code", "text", "", { required: true }),
+    field("Country", "country", "text", "", { required: true }),
+    el("button", { type: "submit" }, "Create account"),
+    message,
+  );
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const saved = await api("/customers", jsonRequest("POST", Object.fromEntries(new FormData(form))));
+      if (view.contains(form)) showCustomerForms("Account created. Sign in to view your profile.", saved.email);
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  return form;
+}
+
+function editableCustomerField(customerId, label, key, value, type = "text") {
+  const display = el("span", { className: "account-value" }, value || "—");
+  const editButton = el("button", {
+    type: "button",
+    className: "edit-icon",
+    title: `Edit ${label.toLowerCase()}`,
+    "aria-label": `Edit ${label.toLowerCase()}`,
+  }, "✎");
+  const input = el("input", {
+    name: key, type, value: value ?? "", required: true,
+    "aria-label": label,
+  });
+  const message = el("span", { className: "error", role: "alert" });
+  const cancelButton = el("button", { type: "button", className: "secondary" }, "Cancel");
+  const editor = el("form", { className: "inline-editor", hidden: true },
+    input,
+    el("button", { type: "submit" }, "Save"),
+    cancelButton,
+    message,
+  );
+
+  editButton.addEventListener("click", () => {
+    display.hidden = true;
+    editButton.hidden = true;
+    editor.hidden = false;
+    input.focus();
+  });
+  cancelButton.addEventListener("click", () => {
+    input.value = value ?? "";
+    message.textContent = "";
+    editor.hidden = true;
+    display.hidden = false;
+    editButton.hidden = false;
+  });
+  editor.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await customerApi(`/customers/${customerId}`, jsonRequest("PATCH", { [key]: input.value }));
+      if (view.contains(editor)) await route();
+    } catch (err) {
+      if (err.status === 401 && view.contains(editor)) {
+        showCustomerForms("Your session expired. Sign in again.");
+        return;
+      }
+      message.textContent = err.message;
+    }
+  });
+
+  return el("div", { className: "account-field" },
+    el("span", { className: "account-label" }, `${label}:`), display, editButton, editor,
+  );
+}
+
+function showCustomerForms(message = "", email = "") {
+  view.replaceChildren(
+    el("h2", {}, "Customer accounts"),
+    ...(message ? [el("p", { role: "status" }, message)] : []),
+    el("h3", {}, "Sign in"), customerLoginForm(email),
+    el("h3", {}, "Create an account"), customerRegistrationForm(),
+  );
+}
+
+async function customerView() {
+  const token = sessionStorage.getItem(customerTokenKey);
+  if (!token) {
+    showCustomerForms();
+    return;
+  }
+  const requestedHash = location.hash;
+  try {
+    const { customerId } = await customerApi("/auth/me", undefined, token);
+    const customer = await customerApi(`/customers/${customerId}`, undefined, token);
+    if (location.hash === requestedHash && sessionStorage.getItem(customerTokenKey) === token) {
+      showCustomer(customer);
+    }
+  } catch (err) {
+    if (location.hash !== requestedHash) return;
+    if (err.status !== 401) throw err;
+    if (!sessionStorage.getItem(customerTokenKey)) showCustomerForms("Your session expired. Sign in again.");
+  }
+}
+
+function showCustomer(customer) {
+  const id = customer.customerId;
+  const address = customer.deliveryAddress;
+  const profile = el("section", { className: "account-details" },
+    editableCustomerField(id, "Name", "name", customer.name),
+    editableCustomerField(id, "Email", "email", customer.email, "email"),
+    el("h4", {}, "Delivery address"),
+    editableCustomerField(id, "Street", "street", address.street),
+    editableCustomerField(id, "City", "city", address.city),
+    editableCustomerField(id, "Province", "province", address.province),
+    editableCustomerField(id, "Postal code", "postal_code", address.postal_code),
+    editableCustomerField(id, "Country", "country", address.country),
+  );
+  const statusText = el("p", { className: customer.status ? "ok" : "muted" },
+    customer.status ? "Account active" : "Account deactivated");
+  const actions = [];
+  if (customer.status) {
+    const deactivateButton = el("button", { type: "button" }, "Deactivate account");
+    deactivateButton.addEventListener("click", async () => {
+      try {
+        await customerApi(`/customers/${id}/deactivate`, { method: "PATCH" });
+        sessionStorage.removeItem(customerTokenKey);
+        if (view.contains(deactivateButton)) showCustomerForms("Your account was deactivated.");
+      } catch (err) {
+        if (err.status === 401 && view.contains(deactivateButton)) {
+          showCustomerForms("Your session expired. Sign in again.");
+          return;
+        }
+        statusText.className = "error";
+        statusText.textContent = err.message;
+      }
+    });
+    actions.push(deactivateButton);
+  }
+  const logoutButton = el("button", { type: "button" }, "Log out");
+  logoutButton.addEventListener("click", () => {
+    sessionStorage.removeItem(customerTokenKey);
+    showCustomerForms();
+  });
+  actions.push(logoutButton);
+  view.replaceChildren(
+    el("h2", {}, `Customer account #${customer.customerId}`),
+    statusText,
+    el("h3", {}, "Profile"),
+    profile,
+    el("div", { className: "customer-actions" }, ...actions),
+  );
+}
+
 // Router --------------------------------------------------------------------
 async function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   try {
     if (parts.length === 0) await listView();
     else if (parts[0] === "new") await formView(null);
+    else if (parts[0] === "customers") await customerView();
     else if (parts[0] === "restaurant" && parts[2] === "edit") await formView(parts[1]);
     else if (parts[0] === "restaurant") await detailView(parts[1]);
     else view.replaceChildren(el("p", {}, "Page not found."));
