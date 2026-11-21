@@ -18,7 +18,6 @@ from main import app
 import app.services.menu_services as menu_services
 import app.services.restaurant_services as restaurant_services
 import app.services.cart_services as cart_services
-import app.repositories.cart_repository as cart_repository
 from app.dependencies.dependencies import require_customer_ownership
 
 

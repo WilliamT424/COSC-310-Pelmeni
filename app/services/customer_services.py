@@ -1,4 +1,4 @@
-from app.schemas.customer import Customer, Address, CustomerCreate, CustomerUpdate
+from app.schemas.customer import Customer, Address, CustomerCreate
 from app.repositories.customer_repositories import read_all_customers_json_file, read_customer_json_file, write_customer_json_file
 from app.services.passwords import hash_password
 

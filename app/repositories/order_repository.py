@@ -32,12 +32,3 @@ def get_orders_by_customer(customer_id, file_path=ORDERS_FILE):
         order for order in orders
         if order["customerId"] == customer_id
     ]
-
-
-def generate_order_id(file_path=ORDERS_FILE):
-    orders = read_orders_file(file_path)
-
-    if not orders:
-        return 1
-
-    return max(order["orderId"] for order in orders) + 1
