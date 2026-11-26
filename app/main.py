@@ -2,7 +2,7 @@ from typing import Optional
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, status, HTTPException, Query
-from app.services.order_services import retrieve_order, retrieve_customer_orders
+from app.services.order_services import retrieve_order, retrieve_customer_orders, update_order_status, OrderNotFound, InvalidOrderTransition
 from app.services.restaurant_services import create_restaurant_service, list_restaurants, get_restaurant, search_restaurants, update_restaurant_service
 from app.services.menu_services import list_menus_for_restaurant, list_menu_items, get_menu_item, add_menu_item, update_menu_item
 from app.services.checkout_services import checkout, CheckoutError, CustomerNotFound, CartNotFound
@@ -377,5 +377,15 @@ async def get_customer_orders_route(customer_id: int, customer=Depends(require_c
 
     return {"orders": orders}
 
+@app.patch("/orders/{order_id}/status")
+async def update_order_status_route(order_id: int, new_status: str, current_user=Depends(get_current_user)):
+    try:
+        return update_order_status(order_id, new_status)
+    except OrderNotFound as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except InvalidOrderTransition as error:
+        raise HTTPException(status_code=409, detail=str(error))
+
 # Basic frontend, served from the same origin as the API (open http://127.0.0.1:8000/ui/)
 app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True), name="ui")
+
